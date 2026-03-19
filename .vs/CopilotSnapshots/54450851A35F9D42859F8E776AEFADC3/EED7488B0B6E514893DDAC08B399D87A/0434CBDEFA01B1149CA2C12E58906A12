@@ -1,0 +1,260 @@
+﻿using CVM_FinalProject.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Services
+{
+    /// <summary>
+    /// Service for managing audit logs
+    /// </summary>
+    public class AuditService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<AuditService> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
+        public AuditService(
+            ApplicationDbContext context, 
+            ILogger<AuditService> logger,
+            IHttpContextAccessor httpContextAccessor)
+        {
+            _context = context;
+            _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
+        }
+
+        // Log user action
+        public async Task LogActionAsync(string userId, string action, int? roleId = null)
+        {
+            try
+            {
+                var ipAddress = _httpContextAccessor?.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+
+                var auditLog = new AuditLog
+                {
+                    UserId = userId,
+                    RoleId = roleId,
+                    Action = action,
+                    AssignedAt = DateTime.UtcNow,
+                    IPAddress = ipAddress
+                };
+
+                _context.AuditLogs.Add(auditLog);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Audit log created: {action} by {userId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error logging audit action");
+                throw;
+            }
+        }
+
+        // Get all audit logs
+        public async Task<List<AuditLog>> GetAllAuditLogsAsync()
+        {
+            try
+            {
+                return await _context.AuditLogs
+                    .Include(a => a.User)
+                    .Include(a => a.Role)
+                    .OrderByDescending(a => a.AssignedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all audit logs");
+                throw;
+            }
+        }
+
+        // Get audit logs by user
+        public async Task<List<AuditLog>> GetAuditLogsByUserAsync(string userId)
+        {
+            try
+            {
+                return await _context.AuditLogs
+                    .Where(a => a.UserId == userId)
+                    .Include(a => a.User)
+                    .Include(a => a.Role)
+                    .OrderByDescending(a => a.AssignedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit logs by user");
+                throw;
+            }
+        }
+
+        // Get audit logs by action
+        public async Task<List<AuditLog>> GetAuditLogsByActionAsync(string action)
+        {
+            try
+            {
+                return await _context.AuditLogs
+                    .Where(a => a.Action.Contains(action))
+                    .Include(a => a.User)
+                    .Include(a => a.Role)
+                    .OrderByDescending(a => a.AssignedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit logs by action");
+                throw;
+            }
+        }
+
+        // Get audit logs for date range
+        public async Task<List<AuditLog>> GetAuditLogsForDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                return await _context.AuditLogs
+                    .Where(a => a.AssignedAt >= startDate && a.AssignedAt <= endDate)
+                    .Include(a => a.User)
+                    .Include(a => a.Role)
+                    .OrderByDescending(a => a.AssignedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit logs for date range");
+                throw;
+            }
+        }
+
+        // Get audit statistics
+        public async Task<AuditStatsViewModel> GetAuditStatsAsync()
+        {
+            try
+            {
+                var totalLogs = await _context.AuditLogs.CountAsync();
+                var logsThisMonth = await _context.AuditLogs
+                    .Where(a => a.AssignedAt.Month == DateTime.UtcNow.Month 
+                        && a.AssignedAt.Year == DateTime.UtcNow.Year)
+                    .CountAsync();
+
+                var uniqueUsers = await _context.AuditLogs
+                    .Select(a => a.UserId)
+                    .Distinct()
+                    .CountAsync();
+
+                var commonActions = await _context.AuditLogs
+                    .GroupBy(a => a.Action)
+                    .Select(g => new ActionCountViewModel
+                    {
+                        Action = g.Key,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(x => x.Count)
+                    .Take(10)
+                    .ToListAsync();
+
+                return new AuditStatsViewModel
+                {
+                    TotalLogs = totalLogs,
+                    LogsThisMonth = logsThisMonth,
+                    UniqueUsers = uniqueUsers,
+                    CommonActions = commonActions,
+                    LastLogTime = await _context.AuditLogs
+                        .OrderByDescending(a => a.AssignedAt)
+                        .Select(a => a.AssignedAt)
+                        .FirstOrDefaultAsync()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit stats");
+                throw;
+            }
+        }
+
+        // Delete old audit logs (retention policy)
+        public async Task<int> DeleteOldAuditLogsAsync(int daysToKeep)
+        {
+            try
+            {
+                var cutoffDate = DateTime.UtcNow.AddDays(-daysToKeep);
+                var logsToDelete = await _context.AuditLogs
+                    .Where(a => a.AssignedAt < cutoffDate)
+                    .ToListAsync();
+
+                _context.AuditLogs.RemoveRange(logsToDelete);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Deleted {logsToDelete.Count} audit logs older than {cutoffDate}");
+                return logsToDelete.Count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting old audit logs");
+                throw;
+            }
+        }
+
+        // Common action logging methods
+        public async Task LogUserCreatedAsync(string userId, int? roleId = null)
+        {
+            await LogActionAsync(userId, "User created/registered", roleId);
+        }
+
+        public async Task LogUserApprovedAsync(string userId, int? roleId = null)
+        {
+            await LogActionAsync(userId, "User approved", roleId);
+        }
+
+        public async Task LogDepartmentCreatedAsync(string userId, int departmentId)
+        {
+            await LogActionAsync(userId, $"Department created (ID: {departmentId})");
+        }
+
+        public async Task LogEmployeeAssignedAsync(string userId, string employeeId, int departmentId)
+        {
+            await LogActionAsync(userId, $"Employee assigned to department (Employee ID: {employeeId}, Dept: {departmentId})");
+        }
+
+        public async Task LogPerformanceRecordedAsync(string userId, string employeeId)
+        {
+            await LogActionAsync(userId, $"Performance record created (Employee: {employeeId})");
+        }
+
+        public async Task LogBudgetUpdatedAsync(string userId, int departmentId, decimal amount)
+        {
+            await LogActionAsync(userId, $"Budget updated (Department: {departmentId}, Amount: ${amount})");
+        }
+
+        public async Task LogReportGeneratedAsync(string userId, string reportType)
+        {
+            await LogActionAsync(userId, $"Report generated ({reportType})");
+        }
+
+        public async Task LogProcessApprovedAsync(string userId, string processId)
+        {
+            await LogActionAsync(userId, $"Process approved (ID: {processId})");
+        }
+
+        public async Task LogProcessCompletedAsync(string userId, string processId)
+        {
+            await LogActionAsync(userId, $"Process completed (ID: {processId})");
+        }
+    }
+
+    // View model for audit statistics
+    public class AuditStatsViewModel
+    {
+        public int TotalLogs { get; set; }
+        public int LogsThisMonth { get; set; }
+        public int UniqueUsers { get; set; }
+        public DateTime LastLogTime { get; set; }
+        public List<ActionCountViewModel> CommonActions { get; set; } = new();
+    }
+
+    // View model for action count
+    public class ActionCountViewModel
+    {
+        public string Action { get; set; } = string.Empty;
+        public int Count { get; set; }
+    }
+}

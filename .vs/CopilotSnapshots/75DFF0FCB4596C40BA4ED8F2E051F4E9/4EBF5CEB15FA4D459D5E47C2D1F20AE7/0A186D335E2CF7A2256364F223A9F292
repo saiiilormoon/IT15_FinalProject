@@ -1,0 +1,693 @@
+﻿using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using CVM_FinalProject.Models.ViewModels;
+using CVM_FinalProject.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Controllers
+{
+    [Authorize]
+    public class DashboardController : Controller
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ILogger<DashboardController> _logger;
+        private readonly ApplicationDbContext _context;
+        private readonly DepartmentService _departmentService;
+        private readonly EmployeeService _employeeService;
+        private readonly PerformanceService _performanceService;
+        private readonly BudgetService _budgetService;
+        private readonly ReportService _reportService;
+        private readonly AuditService _auditService;
+
+        public DashboardController(
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            ILogger<DashboardController> logger,
+            ApplicationDbContext context,
+            DepartmentService departmentService,
+            EmployeeService employeeService,
+            PerformanceService performanceService,
+            BudgetService budgetService,
+            ReportService reportService,
+            AuditService auditService)
+        {
+            _userManager = userManager;
+            _signInManager = signInManager;
+            _logger = logger;
+            _context = context;
+            _departmentService = departmentService;
+            _employeeService = employeeService;
+            _performanceService = performanceService;
+            _budgetService = budgetService;
+            _reportService = reportService;
+            _auditService = auditService;
+        }
+
+        // POST fallback for standard form submissions (safer for antiforgery and redirects)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfilePost(ProfileUpdateModel model)
+        {
+            if (model == null)
+            {
+                TempData["Error"] = "Invalid request";
+                return RedirectToAction("Settings");
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found";
+                return RedirectToAction("Settings");
+            }
+
+            var didChange = false;
+            if (!string.IsNullOrWhiteSpace(model.FirstName) && model.FirstName.Trim() != user.FirstName)
+            {
+                user.FirstName = model.FirstName.Trim();
+                didChange = true;
+            }
+            if (!string.IsNullOrWhiteSpace(model.LastName) && model.LastName.Trim() != user.LastName)
+            {
+                user.LastName = model.LastName.Trim();
+                didChange = true;
+            }
+
+            if (didChange)
+            {
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    TempData["Error"] = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    return RedirectToAction("Settings");
+                }
+                await _signInManager.RefreshSignInAsync(user);
+            }
+
+            if (model.PhoneNumber != null && model.PhoneNumber.Trim() != user.PhoneNumber)
+            {
+                var phoneResult = await _userManager.SetPhoneNumberAsync(user, model.PhoneNumber.Trim());
+                if (!phoneResult.Succeeded)
+                {
+                    TempData["Error"] = string.Join("; ", phoneResult.Errors.Select(e => e.Description));
+                    return RedirectToAction("Settings");
+                }
+            }
+
+            // Role change handling - same as AJAX endpoint
+            if (!string.IsNullOrWhiteSpace(model.Role) && (User.IsInRole("Admin") || User.IsInRole("SuperAdmin")))
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                if (currentRoles.Contains("SuperAdmin"))
+                {
+                    // do not change SuperAdmin
+                }
+                else
+                {
+                    var newRole = model.Role.Trim();
+                    if (!currentRoles.Contains(newRole))
+                    {
+                        var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                        if (!removeResult.Succeeded)
+                        {
+                            TempData["Error"] = string.Join("; ", removeResult.Errors.Select(e => e.Description));
+                            return RedirectToAction("Settings");
+                        }
+                        var addResult = await _userManager.AddToRoleAsync(user, newRole);
+                        if (!addResult.Succeeded)
+                        {
+                            TempData["Error"] = string.Join("; ", addResult.Errors.Select(e => e.Description));
+                            return RedirectToAction("Settings");
+                        }
+                    }
+                }
+            }
+
+            TempData["Success"] = "Profile updated successfully";
+            return RedirectToAction("Settings");
+        }
+
+        private async Task SetUserViewBagAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserEmail = user?.Email ?? "user@example.com";
+            ViewBag.UserFirstName = user?.FirstName ?? "";
+            ViewBag.UserName = user?.FullName ?? user?.FirstName ?? "User";
+            ViewBag.FullName = user?.FullName ?? "User";
+            ViewBag.UserLastName = user?.LastName ?? "";
+            ViewBag.UserPhone = user?.PhoneNumber ?? "";
+            
+            // Get the user's role(s)
+            var roles = await _userManager.GetRolesAsync(user!);
+            ViewBag.UserRole = roles.FirstOrDefault() ?? "Employee";
+            ViewBag.UserRoles = roles;
+        }
+
+        // Model used to accept profile update payload from client
+        public class ProfileUpdateModel
+        {
+            public string? FirstName { get; set; }
+            public string? LastName { get; set; }
+            public string? PhoneNumber { get; set; }
+            public string? Role { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfile([FromBody] ProfileUpdateModel model)
+        {
+            if (model == null)
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "User not found" });
+            }
+
+            // Update basic profile fields
+            var didChange = false;
+            if (!string.IsNullOrWhiteSpace(model.FirstName) && model.FirstName.Trim() != user.FirstName)
+            {
+                user.FirstName = model.FirstName.Trim();
+                didChange = true;
+            }
+            if (!string.IsNullOrWhiteSpace(model.LastName) && model.LastName.Trim() != user.LastName)
+            {
+                user.LastName = model.LastName.Trim();
+                didChange = true;
+            }
+
+            if (didChange)
+            {
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    var err = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    return Json(new { success = false, message = err });
+                }
+                // Refresh sign-in so cookie claims reflect new name immediately
+                await _signInManager.RefreshSignInAsync(user);
+            }
+            else
+            {
+                // if no direct changes to First/Last name, ensure FullName still reflects stored values
+                // (avoid concatenation bugs on client)
+                // nothing to do here; persisted values are returned later
+            }
+
+            // Update phone separately (uses identity store)
+            if (model.PhoneNumber != null && model.PhoneNumber.Trim() != user.PhoneNumber)
+            {
+                var phoneResult = await _userManager.SetPhoneNumberAsync(user, model.PhoneNumber.Trim());
+                if (!phoneResult.Succeeded)
+                {
+                    var err = string.Join("; ", phoneResult.Errors.Select(e => e.Description));
+                    return Json(new { success = false, message = err });
+                }
+            }
+
+            // Role change (only allowed for Admins/SuperAdmins) but do NOT allow changing SuperAdmin role
+            if (!string.IsNullOrWhiteSpace(model.Role) && (User.IsInRole("Admin") || User.IsInRole("SuperAdmin")))
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                // If the user currently has SuperAdmin role, do not allow changing it
+                if (currentRoles.Contains("SuperAdmin"))
+                {
+                    // ignore any requested role changes for SuperAdmin accounts
+                    goto SkipRoleChange;
+                }
+                var newRole = model.Role.Trim();
+                if (!currentRoles.Contains(newRole))
+                {
+                    // Remove existing roles and add the new one
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                    if (!removeResult.Succeeded)
+                    {
+                        var err = string.Join("; ", removeResult.Errors.Select(e => e.Description));
+                        return Json(new { success = false, message = err });
+                    }
+
+                    var addResult = await _userManager.AddToRoleAsync(user, newRole);
+                    if (!addResult.Succeeded)
+                    {
+                        var err = string.Join("; ", addResult.Errors.Select(e => e.Description));
+                        return Json(new { success = false, message = err });
+                    }
+                }
+            }
+            SkipRoleChange:;
+
+            // Refresh viewbag values
+            await SetUserViewBagAsync();
+
+            // Re-fetch the user from store to return persisted values
+            var updatedUser = await _userManager.FindByIdAsync(user.Id);
+            var updatedRoles = await _userManager.GetRolesAsync(updatedUser!);
+
+            // Refresh sign-in so cookie contains updated claims (ensure UI shows persisted values after reload)
+            if (updatedUser != null)
+            {
+                await _signInManager.RefreshSignInAsync(updatedUser);
+            }
+
+            return Json(new
+            {
+                success = true,
+                message = "Profile updated successfully",
+                firstName = updatedUser?.FirstName,
+                lastName = updatedUser?.LastName,
+                phoneNumber = updatedUser?.PhoneNumber,
+                email = updatedUser?.Email,
+                role = updatedRoles.FirstOrDefault()
+            });
+        }
+
+        // Check if current user is approved
+        private async Task<bool> IsUserApprovedAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            return user?.IsApproved ?? false;
+        }
+
+        public async Task<IActionResult> Index()
+        {
+            // Check if user is approved
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> PendingApproval()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserName = user?.FirstName ?? "User";
+            ViewBag.UserEmail = user?.Email ?? "";
+            return View();
+        }
+
+        public async Task<IActionResult> Operations()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            
+            // Load ALL operational processes from database (Pending, Approved, Completed)
+            var processes = await _context.OperationalProcesses
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+            
+            ViewBag.OperationalProcesses = processes;
+            return View();
+        }
+
+        public async Task<IActionResult> Reports()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var reportStats = await _reportService.GetReportStatsAsync();
+            var allReports = await _reportService.GetAllReportsAsync();
+
+            ViewBag.ReportStats = reportStats;
+            return View(allReports);
+        }
+
+        // GET: Dashboard/Departments
+        public async Task<IActionResult> Departments()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var departments = await _departmentService.GetAllDepartmentsAsync();
+            return View(departments);
+        }
+
+        // POST: Dashboard/CreateDepartment
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateDepartment([FromForm] string departmentName, [FromForm] string status)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Departments");
+                }
+
+                var dept = await _departmentService.CreateDepartmentAsync(departmentName, status);
+                await _auditService.LogDepartmentCreatedAsync(currentUser.Id, dept.DepartmentId);
+
+                TempData["Success"] = $"Department '{departmentName}' created successfully!";
+                return RedirectToAction("Departments");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating department");
+                TempData["Error"] = "Error creating department: " + ex.Message;
+                return RedirectToAction("Departments");
+            }
+        }
+
+        // GET: Dashboard/DepartmentDetails/5
+        public async Task<IActionResult> DepartmentDetails(int id)
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var dept = await _departmentService.GetDepartmentWithEmployeesAsync(id);
+            if (dept == null)
+            {
+                return NotFound();
+            }
+
+            return View(dept);
+        }
+
+        // GET: Dashboard/Employees
+        public async Task<IActionResult> Employees()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var employees = await _employeeService.GetAllEmployeesAsync();
+            return View(employees);
+        }
+
+        // POST: Dashboard/AssignEmployee
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignEmployee([FromForm] string userId, [FromForm] int departmentId, [FromForm] string position)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Employees");
+                }
+
+                var emp = await _employeeService.CreateEmployeeAsync(userId, departmentId, position, "Active");
+                await _auditService.LogEmployeeAssignedAsync(currentUser.Id, emp.EmployeeId, departmentId);
+
+                TempData["Success"] = "Employee assigned to department successfully!";
+                return RedirectToAction("Employees");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning employee");
+                TempData["Error"] = "Error assigning employee: " + ex.Message;
+                return RedirectToAction("Employees");
+            }
+        }
+
+        // GET: Dashboard/PerformanceRecords
+        public async Task<IActionResult> PerformanceRecords()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var perfSummary = await _performanceService.GetPerformanceSummaryAsync();
+            var allRecords = await _performanceService.GetAllPerformanceRecordsAsync();
+
+            ViewBag.PerfSummary = perfSummary;
+            return View("Performance", allRecords);
+        }
+
+        // POST: Dashboard/RecordPerformance
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RecordPerformance([FromForm] string employeeId, [FromForm] string evaluationPeriod, [FromForm] string remarks)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Performance");
+                }
+
+                await _performanceService.RecordPerformanceAsync(employeeId, evaluationPeriod, remarks);
+                await _auditService.LogPerformanceRecordedAsync(currentUser.Id, employeeId);
+
+                TempData["Success"] = "Performance record created successfully!";
+                return RedirectToAction("Performance");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording performance");
+                TempData["Error"] = "Error recording performance: " + ex.Message;
+                return RedirectToAction("Performance");
+            }
+        }
+
+        public async Task<IActionResult> Budget()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var budgetStats = await _budgetService.GetBudgetStatsAsync();
+            return View(budgetStats);
+        }
+
+        // POST: Dashboard/CreateBudget
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateBudget([FromForm] int departmentId, [FromForm] string budgetPeriod, [FromForm] decimal allocatedAmount)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Budget");
+                }
+
+                await _budgetService.CreateBudgetAsync(departmentId, budgetPeriod, allocatedAmount);
+                await _auditService.LogBudgetUpdatedAsync(currentUser.Id, departmentId, allocatedAmount);
+
+                TempData["Success"] = "Budget created successfully!";
+                return RedirectToAction("Budget");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating budget");
+                TempData["Error"] = "Error creating budget: " + ex.Message;
+                return RedirectToAction("Budget");
+            }
+        }
+
+        public async Task<IActionResult> Settings()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        // GET: Dashboard/ApprovedAndCompleted
+        public async Task<IActionResult> ApprovedAndCompleted()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        // POST: Dashboard/CreateOperationalProcess
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateOperationalProcess([FromForm] string processName, [FromForm] string department, [FromForm] string assignedTo, [FromForm] string priority, [FromForm] string description)
+        {
+            try
+            {
+                // Validation
+                if (string.IsNullOrWhiteSpace(processName))
+                {
+                    TempData["Error"] = "Process name is required";
+                    return RedirectToAction("Operations");
+                }
+
+                if (string.IsNullOrWhiteSpace(department))
+                {
+                    TempData["Error"] = "Department is required";
+                    return RedirectToAction("Operations");
+                }
+
+                if (string.IsNullOrWhiteSpace(assignedTo))
+                {
+                    TempData["Error"] = "Assigned to is required";
+                    return RedirectToAction("Operations");
+                }
+
+                // Generate ProcessId (e.g., OP-001, OP-002, etc.)
+                var lastProcess = await _context.OperationalProcesses
+                    .OrderByDescending(p => p.ProcessId)
+                    .FirstOrDefaultAsync();
+
+                int nextNumber = 1;
+                if (lastProcess != null && lastProcess.ProcessId.StartsWith("OP-"))
+                {
+                    if (int.TryParse(lastProcess.ProcessId.Substring(3), out int lastNumber))
+                    {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+
+                string newProcessId = $"OP-{nextNumber:D3}"; // Format as OP-001, OP-002, etc.
+
+                // Create new operational process
+                var operationalProcess = new OperationalProcess
+                {
+                    ProcessId = newProcessId,
+                    Name = processName.Trim(),
+                    Department = department.Trim(),
+                    AssignedTo = assignedTo.Trim(),
+                    Status = ProcessStatus.Pending,
+                    CreatedAt = DateTime.UtcNow,
+                    Notes = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
+                };
+
+                // Add to database
+                _context.OperationalProcesses.Add(operationalProcess);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Process {newProcessId} created successfully!";
+                _logger.LogInformation($"New operational process created: {newProcessId} - {processName}");
+
+                return RedirectToAction("Operations");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating operational process");
+                TempData["Error"] = "An error occurred while creating the process. Please try again.";
+                return RedirectToAction("Operations");
+            }
+        }
+
+        // POST: Dashboard/ApproveProcessAjax
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveProcessAjax([FromBody] ProcessActionRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.ProcessId))
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            try
+            {
+                // Find the process in database
+                var process = await _context.OperationalProcesses
+                    .FirstOrDefaultAsync(p => p.ProcessId == request.ProcessId);
+
+                if (process == null)
+                {
+                    return Json(new { success = false, message = "Process not found" });
+                }
+
+                // Update status to Approved
+                process.Status = ProcessStatus.Approved;
+                process.ApprovedAt = DateTime.UtcNow;
+
+                _context.OperationalProcesses.Update(process);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Process {request.ProcessId} approved at {DateTime.UtcNow}");
+
+                return Json(new { success = true, message = "Process approved successfully", status = "APPROVED" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approving process");
+                return Json(new { success = false, message = "An error occurred while approving the process" });
+            }
+        }
+
+        // POST: Dashboard/CompleteProcessAjax
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CompleteProcessAjax([FromBody] ProcessActionRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.ProcessId))
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            try
+            {
+                // Find the process in database
+                var process = await _context.OperationalProcesses
+                    .FirstOrDefaultAsync(p => p.ProcessId == request.ProcessId);
+
+                if (process == null)
+                {
+                    return Json(new { success = false, message = "Process not found" });
+                }
+
+                // Update status to Completed
+                process.Status = ProcessStatus.Completed;
+                process.CompletedAt = DateTime.UtcNow;
+
+                _context.OperationalProcesses.Update(process);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Process {request.ProcessId} completed at {DateTime.UtcNow}");
+
+                return Json(new { success = true, message = "Process completed successfully", status = "COMPLETED" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing process");
+                return Json(new { success = false, message = "An error occurred while completing the process" });
+            }
+        }
+
+        // Model for AJAX requests
+        public class ProcessActionRequest
+        {
+            public string? ProcessId { get; set; }
+            public string? Status { get; set; }
+        }
+    }
+}

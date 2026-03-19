@@ -1,0 +1,240 @@
+﻿using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Services
+{
+    /// <summary>
+    /// Service for managing budgets
+    /// </summary>
+    public class BudgetService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<BudgetService> _logger;
+
+        public BudgetService(ApplicationDbContext context, ILogger<BudgetService> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        // Create budget for department
+        public async Task<Budget> CreateBudgetAsync(int departmentId, string budgetPeriod, decimal allocatedAmount)
+        {
+            try
+            {
+                // Verify department exists
+                var dept = await _context.Departments.FindAsync(departmentId);
+                if (dept == null)
+                    throw new InvalidOperationException("Department not found");
+
+                var budget = new Budget
+                {
+                    DepartmentId = departmentId,
+                    BudgetPeriod = budgetPeriod,
+                    AllocatedAmount = allocatedAmount,
+                    UsedAmount = 0,
+                    RemainingAmount = allocatedAmount
+                };
+
+                _context.Budgets.Add(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Budget created for department {departmentId}: ${allocatedAmount}");
+                return budget;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating budget");
+                throw;
+            }
+        }
+
+        // Get budget for department
+        public async Task<Budget?> GetDepartmentBudgetAsync(int departmentId)
+        {
+            try
+            {
+                return await _context.Budgets
+                    .FirstOrDefaultAsync(b => b.DepartmentId == departmentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting department budget");
+                throw;
+            }
+        }
+
+        // Get all budgets
+        public async Task<List<Budget>> GetAllBudgetsAsync()
+        {
+            try
+            {
+                return await _context.Budgets
+                    .Include(b => b.Department)
+                    .OrderBy(b => b.Department!.DepartmentName)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all budgets");
+                throw;
+            }
+        }
+
+        // Update used amount
+        public async Task<Budget> UpdateUsedAmountAsync(int budgetId, decimal usedAmount)
+        {
+            try
+            {
+                var budget = await _context.Budgets.FindAsync(budgetId);
+                if (budget == null)
+                    throw new InvalidOperationException("Budget not found");
+
+                budget.UsedAmount = usedAmount;
+                budget.RemainingAmount = budget.AllocatedAmount - usedAmount;
+
+                _context.Budgets.Update(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Budget updated: {budgetId}, Used: ${usedAmount}");
+                return budget;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating used amount");
+                throw;
+            }
+        }
+
+        // Add expense to budget
+        public async Task<Budget> AddExpenseAsync(int budgetId, decimal expenseAmount)
+        {
+            try
+            {
+                var budget = await _context.Budgets.FindAsync(budgetId);
+                if (budget == null)
+                    throw new InvalidOperationException("Budget not found");
+
+                budget.UsedAmount += expenseAmount;
+                budget.RemainingAmount = budget.AllocatedAmount - budget.UsedAmount;
+
+                if (budget.RemainingAmount < 0)
+                    _logger.LogWarning($"Budget exceeded for budget {budgetId}");
+
+                _context.Budgets.Update(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Expense added to budget {budgetId}: ${expenseAmount}");
+                return budget;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding expense");
+                throw;
+            }
+        }
+
+        // Get budget statistics
+        public async Task<BudgetStatsViewModel> GetBudgetStatsAsync()
+        {
+            try
+            {
+                var budgets = await _context.Budgets
+                    .Include(b => b.Department)
+                    .ToListAsync();
+
+                var totalAllocated = budgets.Sum(b => b.AllocatedAmount);
+                var totalUsed = budgets.Sum(b => b.UsedAmount);
+                var totalRemaining = budgets.Sum(b => b.RemainingAmount);
+
+                var budgetsExceeded = budgets.Count(b => b.RemainingAmount < 0);
+                var budgetsLow = budgets.Count(b => b.RemainingAmount > 0 && b.RemainingAmount < (b.AllocatedAmount * 0.2m));
+
+                return new BudgetStatsViewModel
+                {
+                    TotalAllocated = totalAllocated,
+                    TotalUsed = totalUsed,
+                    TotalRemaining = totalRemaining,
+                    TotalBudgets = budgets.Count,
+                    PercentageUsed = totalAllocated > 0 ? (double)((totalUsed / totalAllocated) * 100) : 0,
+                    BudgetsExceeded = budgetsExceeded,
+                    BudgetsLowBalance = budgetsLow,
+                    DepartmentBudgets = budgets.Select(b => new BudgetDetailViewModel
+                    {
+                        DepartmentName = b.Department?.DepartmentName ?? "Unknown",
+                        BudgetPeriod = b.BudgetPeriod ?? "N/A",
+                        AllocatedAmount = b.AllocatedAmount,
+                        UsedAmount = b.UsedAmount,
+                        RemainingAmount = b.RemainingAmount,
+                        PercentageUsed = b.AllocatedAmount > 0 ? (double)((b.UsedAmount / b.AllocatedAmount) * 100) : 0,
+                        Status = GetBudgetStatus(b)
+                    }).ToList()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting budget stats");
+                throw;
+            }
+        }
+
+        // Get budget status
+        private string GetBudgetStatus(Budget budget)
+        {
+            if (budget.RemainingAmount < 0)
+                return "Exceeded";
+            if (budget.RemainingAmount < (budget.AllocatedAmount * 0.2m))
+                return "Low";
+            if (budget.RemainingAmount < (budget.AllocatedAmount * 0.5m))
+                return "Moderate";
+            return "Healthy";
+        }
+
+        // Delete budget
+        public async Task DeleteBudgetAsync(int budgetId)
+        {
+            try
+            {
+                var budget = await _context.Budgets.FindAsync(budgetId);
+                if (budget == null)
+                    throw new InvalidOperationException("Budget not found");
+
+                _context.Budgets.Remove(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Budget deleted: {budgetId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting budget");
+                throw;
+            }
+        }
+    }
+
+    // View model for budget statistics
+    public class BudgetStatsViewModel
+    {
+        public decimal TotalAllocated { get; set; }
+        public decimal TotalUsed { get; set; }
+        public decimal TotalRemaining { get; set; }
+        public int TotalBudgets { get; set; }
+        public double PercentageUsed { get; set; }
+        public int BudgetsExceeded { get; set; }
+        public int BudgetsLowBalance { get; set; }
+        public List<BudgetDetailViewModel> DepartmentBudgets { get; set; } = new();
+    }
+
+    // View model for budget details
+    public class BudgetDetailViewModel
+    {
+        public string DepartmentName { get; set; } = string.Empty;
+        public string? BudgetPeriod { get; set; }
+        public decimal AllocatedAmount { get; set; }
+        public decimal UsedAmount { get; set; }
+        public decimal RemainingAmount { get; set; }
+        public double PercentageUsed { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+}

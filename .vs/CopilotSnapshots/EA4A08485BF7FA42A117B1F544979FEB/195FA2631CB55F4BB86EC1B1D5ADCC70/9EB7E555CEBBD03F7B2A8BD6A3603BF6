@@ -1,0 +1,42 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace CVM_FinalProject.Models
+{
+    /// <summary>
+    /// Represents a performance record for an employee
+    /// </summary>
+    public class PerformanceRecord
+    {
+        [Key]
+        [Column("Performance_ID")]
+        public int PerformanceId { get; set; }
+
+        [Required]
+        [Column("employee_ID")]
+        [ForeignKey("Employee")]
+        public string EmployeeId { get; set; } = string.Empty;
+
+        [StringLength(100)]
+        public string? EvaluationPeriod { get; set; }
+
+        [StringLength(500)]
+        public string? Remarks { get; set; }
+
+        [Column("tasks_completed")]
+        public int TasksCompleted { get; set; } = 0;
+
+        [Column("tasks_pending")]
+        public int TasksPending { get; set; } = 0;
+
+        [Column("performance_rating")]
+        [Range(1, 5)]
+        public int PerformanceRating { get; set; } = 3; // Scale 1-5
+
+        [Column("recorded_at")]
+        public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
+
+        // Navigation properties
+        public virtual Employee? Employee { get; set; }
+    }
+}

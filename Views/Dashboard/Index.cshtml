@@ -1,0 +1,857 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+    
+    var userRole = ViewBag.UserRole as string ?? "Employee";
+    var isAdmin = userRole == "Admin" || userRole == "SuperAdmin";
+    var isAccountant = userRole == "Accountant" || isAdmin;
+    var isHR = userRole == "HR" || isAdmin;
+    var isAuditor = userRole == "Auditor" || isAdmin;
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Welcome back, @ViewBag.UserName!</h2>
+            <p>Here's your organization summary for today. <span class="badge bg-primary">@userRole</span></p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <select class="form-select form-select-sm" style="width: auto;" id="periodFilter">
+                <option value="month">This Month</option>
+                <option value="quarter">This Quarter</option>
+                <option value="year">This Year</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions - Role Based -->
+<div class="row g-3 mb-4">
+    @if (isAdmin || isAccountant || isHR)
+    {
+        <div class="col-6 col-md-3">
+            <a href="@Url.Action("Operations", "Dashboard")" class="quick-action-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>New Process</span>
+            </a>
+        </div>
+    }
+    <div class="col-6 col-md-3">
+        <a href="@Url.Action("Reports", "Dashboard")" class="quick-action-btn">
+            <i class="fas fa-file-export"></i>
+            <span>View Reports</span>
+        </a>
+    </div>
+    @if (isAdmin || isHR || isAuditor)
+    {
+        <div class="col-6 col-md-3">
+            <a href="@Url.Action("Performance", "Dashboard")" class="quick-action-btn">
+                <i class="fas fa-chart-bar"></i>
+                <span>View Performance</span>
+            </a>
+        </div>
+    }
+    @if (isAdmin || isAccountant || isAuditor)
+    {
+        <div class="col-6 col-md-3">
+            <a href="@Url.Action("Budget", "Dashboard")" class="quick-action-btn">
+                <i class="fas fa-peso-sign"></i>
+                <span>Budget Status</span>
+            </a>
+        </div>
+    }
+</div>
+
+<!-- KPI Summary Cards - Dashboard at a Glance -->
+<div class="row g-3 mb-4">
+    <!-- Total Employees Card -->
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="stat-card kpi-card kpi-employees h-100" onclick="window.location.href='@Url.Action("Employees", "Dashboard")'">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label mb-1">Total Employees</p>
+                    <h3 class="mb-1">@(ViewBag.TotalEmployees ?? 0)</h3>
+                </div>
+                <div class="kpi-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+            <a href="@Url.Action("Employees", "Dashboard")" class="kpi-sub">
+                <i class="fas fa-arrow-up-right-from-square"></i> View All Employees
+            </a>
+        </div>
+    </div>
+
+    <!-- Total Departments Card -->
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="stat-card kpi-card kpi-departments h-100" onclick="window.location.href='@Url.Action("Departments", "Dashboard")'">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label mb-1">Departments</p>
+                    <h3 class="mb-1">@(ViewBag.TotalDepartments ?? 0)</h3>
+                </div>
+                <div class="kpi-icon">
+                    <i class="fas fa-building"></i>
+                </div>
+            </div>
+            <a href="@Url.Action("Departments", "Dashboard")" class="kpi-sub">
+                <i class="fas fa-arrow-up-right-from-square"></i> Manage Departments
+            </a>
+        </div>
+    </div>
+
+    <!-- Budget Utilization Card -->
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="stat-card kpi-card kpi-budget h-100" onclick="window.location.href='@Url.Action("Budget", "Dashboard")'">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label mb-1">Budget Used</p>
+                    <h3 class="mb-1">@(Math.Round(ViewBag.BudgetUtilizationRate ?? 0, 0))%</h3>
+                </div>
+                <div class="kpi-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+            </div>
+            <a href="@Url.Action("Budget", "Dashboard")" class="kpi-sub">
+                <i class="fas fa-arrow-up-right-from-square"></i>
+                <span id="budgetStatus">Optimal</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Details Row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-12">
+        <div class="chart-card kpi-detail-strip">
+            <div class="row g-3">
+                <div class="col-md-3 border-end">
+                    <h6 class="mb-2" style="color: black !important; font-weight: bold;">Total Budget Allocated</h6>
+                    <h4 class="mb-0" style="color: black !important; font-weight: bold;">₱ @ViewBag.TotalBudgetAllocated?.ToString("N2")</h4>
+                </div>
+                <div class="col-md-3 border-end">
+                    <h6 class="mb-2" style="color: black !important; font-weight: bold;">Total Budget Used</h6>
+                    <h4 class="mb-0" style="color: #059669 !important; font-weight: bold;">₱ @ViewBag.TotalBudgetUsed?.ToString("N2")</h4>
+                </div>
+                <div class="col-md-3 border-end">
+                    <h6 class="mb-2" style="color: black !important; font-weight: bold;">Remaining Budget</h6>
+                    <h4 class="mb-0" style="color: #2563eb !important; font-weight: bold;">₱ @((ViewBag.TotalBudgetAllocated - ViewBag.TotalBudgetUsed)?.ToString("N2"))</h4>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="mb-2" style="color: black !important; font-weight: bold;">Utilization Rate</h6>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="flex: 1;">
+                            <div class="progress" style="height: 8px; border-radius: 6px;">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: @(ViewBag.BudgetUtilizationRate ?? 0)%; background: linear-gradient(90deg, #6ee7b7, #22c55e); border-radius: 6px;"></div>
+                            </div>
+                        </div>
+                        <small style="font-weight: 700; min-width: 38px;">@(Math.Round(ViewBag.BudgetUtilizationRate ?? 0, 1))%</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row - Request Status Distribution -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="chart-card">
+            <h5 class="mb-3">Request Status Distribution</h5>
+            <div class="chart-container-sm">
+                <canvas id="requestStatusChart"></canvas>
+            </div>
+            <div class="mt-3">
+                <div class="row text-center g-2">
+                    <div class="col-3">
+                        <small class="d-block text-muted">Pending</small>
+                        <strong>@(ViewBag.RequestStatusCounts[0])</strong>
+                    </div>
+                    <div class="col-3">
+                        <small class="d-block text-muted">In Progress</small>
+                        <strong>@(ViewBag.RequestStatusCounts[1])</strong>
+                    </div>
+                    <div class="col-3">
+                        <small class="d-block text-muted">Completed</small>
+                        <strong>@(ViewBag.RequestStatusCounts[2])</strong>
+                    </div>
+                    <div class="col-3">
+                        <small class="d-block text-muted">Rejected</small>
+                        <strong>@(ViewBag.RequestStatusCounts[3])</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Process Status Distribution -->
+    <div class="col-lg-6">
+        <div class="chart-card">
+            <h5 class="mb-3">Operational Process Status</h5>
+            <div class="chart-container-sm">
+                <canvas id="processStatusChart"></canvas>
+            </div>
+            <div class="mt-3">
+                <div class="row text-center g-2">
+                    <div class="col-4">
+                        <small class="d-block text-muted">Pending</small>
+                        <strong>@(ViewBag.ProcessStatusCounts[0])</strong>
+                    </div>
+                    <div class="col-4">
+                        <small class="d-block text-muted">Approved</small>
+                        <strong>@(ViewBag.ProcessStatusCounts[1])</strong>
+                    </div>
+                    <div class="col-4">
+                        <small class="d-block text-muted">Completed</small>
+                        <strong>@(ViewBag.ProcessStatusCounts[2])</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row - Trends and Department Performance -->
+<div class="row g-3 mb-4">
+    <!-- Monthly Requests Trend -->
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Monthly Requests Trend (6 Months)</h5>
+                <small class="text-muted">Last 6 Months</small>
+            </div>
+            <div class="chart-container">
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Performance -->
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <h5 class="mb-3">Department Workforce</h5>
+            <div class="chart-container-sm">
+                <canvas id="deptPerformanceChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Processes per Department Chart (Updated) -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-12">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Operational Processes by Department</h5>
+                <small class="text-muted">Distribution Across Organization</small>
+            </div>
+            <div class="chart-container">
+                <canvas id="processDeptChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity and Departments Row -->
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Recent Activity</h5>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#activityModal">View All</button>
+            </div>
+            <ul class="activity-list">
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(30,60,114,0.1); color: #1e3c72;">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Monthly Performance Report generated</h6>
+                        <small>Admin - 2 hours ago</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(39,174,96,0.1); color: #27ae60;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Budget allocation approved</h6>
+                        <small>Accountant - 5 hours ago</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(52,152,219,0.1); color: #3498db;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>New employee onboarded</h6>
+                        <small>HR - Yesterday</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(241,196,15,0.1); color: #f1c40f;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Budget threshold alert - Sales</h6>
+                        <small>System - Yesterday</small>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="data-table">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">User Role Summary</h5>
+                <a href="@Url.Action("Performance", "Dashboard")" class="btn btn-sm btn-outline-primary">View Details</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Users</th>
+                            <th>Activity</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-user-shield text-danger me-2"></i>SuperAdmin</td>
+                            <td>1</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                                    </div>
+                                    <small>100%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-user-cog text-primary me-2"></i>Admin</td>
+                            <td>3</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 95%"></div>
+                                    </div>
+                                    <small>95%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-calculator text-success me-2"></i>Accountant</td>
+                            <td>5</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 88%"></div>
+                                    </div>
+                                    <small>88%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-users text-info me-2"></i>HR</td>
+                            <td>4</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 92%"></div>
+                                    </div>
+                                    <small>92%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-user text-secondary me-2"></i>Employee</td>
+                            <td>45</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 85%"></div>
+                                    </div>
+                                    <small>85%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-search text-warning me-2"></i>Auditor</td>
+                            <td>2</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 90%"></div>
+                                    </div>
+                                    <small>90%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Activity Log</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>Department</th>
+                                <th>Date/Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Generated Monthly Performance Report</td>
+                                <td>Admin</td>
+                                <td>All</td>
+                                <td>Feb 15, 2026 10:30 AM</td>
+                            </tr>
+                            <tr>
+                                <td>Approved Budget Allocation</td>
+                                <td>Accountant</td>
+                                <td>Finance</td>
+                                <td>Feb 15, 2026 8:15 AM</td>
+                            </tr>
+                            <tr>
+                                <td>Onboarded New Employee</td>
+                                <td>HR Manager</td>
+                                <td>HR</td>
+                                <td>Feb 14, 2026 3:45 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Budget Threshold Alert Triggered</td>
+                                <td>System</td>
+                                <td>Sales</td>
+                                <td>Feb 14, 2026 2:00 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Generated Departmental Report</td>
+                                <td>HR Manager</td>
+                                <td>HR</td>
+                                <td>Feb 14, 2026 11:20 AM</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ============ REQUEST STATUS CHART (Doughnut) ============
+    (function() {
+        const labels = @Html.Raw(Json.Serialize(ViewBag.RequestStatusLabels ?? new List<string>()));
+        const counts = @Html.Raw(Json.Serialize(ViewBag.RequestStatusCounts ?? new int[] { 0, 0, 0, 0 }));
+
+        const requestStatusCtx = document.getElementById('requestStatusChart').getContext('2d');
+        new Chart(requestStatusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#e67e22', '#2980b9', '#27ae60', '#c0392b'],
+                    borderColor: '#fdf4e7',
+                    borderWidth: 3,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 14,
+                            padding: 16,
+                            font: { size: 12, weight: '600' },
+                            color: '#2c3e50'
+                        }
+                    },
+                    tooltip: { callbacks: { label: function(context) { return context.label + ': ' + context.parsed + ' requests'; } } }
+                },
+                cutout: '60%'
+            }
+        });
+    })();
+
+    // ============ PROCESS STATUS CHART (Doughnut) ============
+    (function() {
+        const labels = @Html.Raw(Json.Serialize(ViewBag.ProcessStatusLabels ?? new List<string>()));
+        const counts = @Html.Raw(Json.Serialize(ViewBag.ProcessStatusCounts ?? new int[] { 0, 0, 0 }));
+
+        const processStatusCtx = document.getElementById('processStatusChart').getContext('2d');
+        new Chart(processStatusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#e67e22', '#2980b9', '#27ae60'],
+                    borderColor: '#fdf4e7',
+                    borderWidth: 3,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 14,
+                            padding: 16,
+                            font: { size: 12, weight: '600' },
+                            color: '#2c3e50'
+                        }
+                    },
+                    tooltip: { callbacks: { label: function(context) { return context.label + ': ' + context.parsed + ' processes'; } } }
+                },
+                cutout: '60%'
+            }
+        });
+    })();
+
+    // ============ MONTHLY REQUESTS TREND (Line Chart) ============
+    (function() {
+        const monthLabels = @Html.Raw(Json.Serialize(ViewBag.MonthlyRequestLabels ?? new List<string>()));
+        const monthlyCounts = @Html.Raw(Json.Serialize(ViewBag.MonthlyRequestCounts ?? new List<int>()));
+
+        const monthlyTrendCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+        new Chart(monthlyTrendCtx, {
+            type: 'line',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: 'Requests Submitted',
+                    data: monthlyCounts,
+                    borderColor: '#1e3c72',
+                    backgroundColor: 'rgba(30, 60, 114, 0.12)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#c49a4a',
+                    pointBorderColor: '#1e3c72',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 9,
+                    pointHoverBackgroundColor: '#a07830'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            boxWidth: 14,
+                            padding: 16,
+                            font: { size: 12, weight: '600' },
+                            color: '#2c3e50'
+                        }
+                    },
+                    tooltip: { callbacks: { label: function(context) { return 'Requests: ' + context.parsed.y; } } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(30,60,114,0.12)', lineWidth: 1.5 },
+                        ticks: { font: { size: 11, weight: '600' }, color: '#2c3e50' },
+                        border: { color: 'rgba(30,60,114,0.3)' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(30,60,114,0.08)', lineWidth: 1 },
+                        ticks: { font: { size: 11, weight: '600' }, color: '#2c3e50' },
+                        border: { color: 'rgba(30,60,114,0.3)' }
+                    }
+                }
+            }
+        });
+    })();
+
+    // ============ DEPARTMENT PERFORMANCE CHART (Horizontal Bar) ============
+    (function() {
+        const deptLabels = @Html.Raw(Json.Serialize(ViewBag.DeptPerformanceLabels ?? new List<string>()));
+        const deptCounts = @Html.Raw(Json.Serialize(ViewBag.DeptPerformanceCounts ?? new List<int>()));
+
+        const deptPerformanceCtx = document.getElementById('deptPerformanceChart').getContext('2d');
+        new Chart(deptPerformanceCtx, {
+            type: 'bar',
+            data: {
+                labels: deptLabels,
+                datasets: [{
+                    label: 'Employees',
+                    data: deptCounts,
+                    backgroundColor: 'rgba(30, 60, 114, 0.82)',
+                    borderColor: '#1e3c72',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    barThickness: 'flex',
+                    maxBarThickness: 50
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(30,60,114,0.12)', lineWidth: 1.5 },
+                        ticks: { font: { size: 11, weight: '600' }, color: '#2c3e50' },
+                        border: { color: 'rgba(30,60,114,0.3)' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11, weight: '600' }, color: '#2c3e50' },
+                        border: { color: 'rgba(30,60,114,0.3)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function(context) { return context.parsed.x + ' employees'; } } }
+                }
+            }
+        });
+    })();
+
+    // ============ PROCESSES PER DEPARTMENT (Bar Chart) ============
+    (function() {
+        const labels = @Html.Raw(Json.Serialize(ViewBag.ProcessDeptLabels ?? new List<string>()));
+        const counts = @Html.Raw(Json.Serialize(ViewBag.ProcessDeptCounts ?? new List<int>()));
+
+        const processDeptCtx = document.getElementById('processDeptChart').getContext('2d');
+        new Chart(processDeptCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Active Processes',
+                    data: counts,
+                    backgroundColor: [
+                        'rgba(30, 60, 114, 0.85)',
+                        'rgba(196, 154, 74, 0.85)',
+                        'rgba(39, 174, 96, 0.85)',
+                        'rgba(41, 128, 185, 0.85)',
+                        'rgba(192, 57, 43, 0.85)',
+                        'rgba(142, 68, 173, 0.85)',
+                        'rgba(230, 126, 34, 0.85)',
+                        'rgba(22, 160, 133, 0.85)'
+                    ],
+                    borderColor: [
+                        '#1e3c72',
+                        '#a07830',
+                        '#1e8449',
+                        '#1a6fa0',
+                        '#a93226',
+                        '#6c3483',
+                        '#ca6f1e',
+                        '#0e8070'
+                    ],
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    maxBarThickness: 50
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(30,60,114,0.12)', lineWidth: 1.5 },
+                        ticks: { stepSize: 1, font: { size: 11, weight: '600' }, color: '#2c3e50' },
+                        border: { color: 'rgba(30,60,114,0.3)' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(30,60,114,0.08)', lineWidth: 1 },
+                        ticks: { autoSkip: true, maxRotation: 45, minRotation: 0, font: { size: 11, weight: '600' }, color: '#2c3e50' },
+                        border: { color: 'rgba(30,60,114,0.3)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            boxWidth: 14,
+                            padding: 16,
+                            font: { size: 12, weight: '600' },
+                            color: '#2c3e50'
+                        }
+                    },
+                    tooltip: { callbacks: { label: function(context) { return context.parsed.y + ' processes'; } } }
+                }
+            }
+        });
+    })();
+
+    // ============ BUDGET UTILIZATION STATUS ============
+    (function() {
+        const budgetRate = @(ViewBag.BudgetUtilizationRate ?? 0);
+        let statusText = 'Optimal';
+        let statusColor = '#16a085';
+
+        if (budgetRate > 90) {
+            statusText = 'Critical - Nearly Exhausted';
+            statusColor = '#e74c3c';
+        } else if (budgetRate > 75) {
+            statusText = 'High - Approaching Limit';
+            statusColor = '#f39c12';
+        } else if (budgetRate > 50) {
+            statusText = 'Moderate - On Track';
+            statusColor = '#3498db';
+        }
+
+        const el = document.getElementById('budgetStatus');
+        if (el) {
+            el.textContent = statusText;
+            el.style.color = statusColor;
+            if (el.parentElement && el.parentElement.tagName === 'A') {
+                el.parentElement.style.color = statusColor;
+            }
+        }
+    })();
+
+    // ============ ORIGINAL CHARTS (Keep for backward compatibility) ============
+    const reportCtx = document.getElementById('reportChart');
+    if (reportCtx) {
+        const reportChart = new Chart(reportCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Operational',
+                    data: [12, 15, 18, 14, 20, 22],
+                    backgroundColor: '#1e3c72',
+                    borderRadius: 4,
+                    barThickness: 'flex',
+                    maxBarThickness: 30
+                }, {
+                    label: 'Departmental',
+                    data: [8, 10, 12, 9, 15, 14],
+                    backgroundColor: '#2a5298',
+                    borderRadius: 4,
+                    barThickness: 'flex',
+                    maxBarThickness: 30
+                }, {
+                    label: 'Performance',
+                    data: [5, 7, 8, 6, 10, 9],
+                    backgroundColor: '#27ae60',
+                    borderRadius: 4,
+                    barThickness: 'flex',
+                    maxBarThickness: 30
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { 
+                            boxWidth: 12, 
+                            padding: 15, 
+                            font: { size: 11 },
+                            usePointStyle: true
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: { font: { size: 10 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 } }
+                    }
+                }
+            }
+        });
+
+        window.updateChart = function(period) {
+            document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (period === 'quarterly') {
+                reportChart.data.labels = ['Q1', 'Q2', 'Q3', 'Q4'];
+                reportChart.data.datasets[0].data = [45, 52, 48, 55];
+                reportChart.data.datasets[1].data = [30, 35, 32, 38];
+                reportChart.data.datasets[2].data = [20, 25, 22, 28];
+            } else {
+                reportChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                reportChart.data.datasets[0].data = [12, 15, 18, 14, 20, 22];
+                reportChart.data.datasets[1].data = [8, 10, 12, 9, 15, 14];
+                reportChart.data.datasets[2].data = [5, 7, 8, 6, 10, 9];
+            }
+            reportChart.update();
+        };
+    }
+
+    const distCtx = document.getElementById('distributionChart');
+    if (distCtx) {
+        new Chart(distCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Operational', 'Departmental', 'Performance', 'Budget'],
+                datasets: [{
+                    data: [35, 28, 22, 15],
+                    backgroundColor: ['#1e3c72', '#2a5298', '#27ae60', '#f39c12'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + '%';
+                            }
+                        }
+                    }
+                },
+                cutout: '55%'
+            }
+        });
+    }
+</script>
+}
+

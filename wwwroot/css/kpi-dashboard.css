@@ -1,0 +1,993 @@
+/* ============ KPI CARD STYLES ============ */
+.kpi-card {
+  border-radius: 16px;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  border: none !important;
+}
+
+/* Shimmer sweep on hover */
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+
+.kpi-card:hover::after {
+  left: 160%;
+}
+
+/* Slide-up top accent bar */
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 4px;
+  background: rgba(255,255,255,0.35);
+  border-radius: 0 0 16px 16px;
+  transition: height 0.3s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.22) !important;
+}
+
+.kpi-card:hover::before {
+  height: 6px;
+}
+
+/* ?? KPI Card 1: Employees — deep navy-to-indigo ?? */
+.kpi-card.kpi-employees {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 60%, #3b6fd4 100%);
+  box-shadow: 0 8px 28px rgba(30,60,114,0.45);
+}
+
+/* ?? KPI Card 2: Departments — teal-to-cyan ?? */
+.kpi-card.kpi-departments {
+  background: linear-gradient(135deg, #0f6b6b 0%, #0e9aa7 60%, #22d3ee 100%);
+  box-shadow: 0 8px 28px rgba(14,154,167,0.45);
+}
+
+/* ?? KPI Card 3: Budget — emerald-to-green ?? */
+.kpi-card.kpi-budget {
+  background: linear-gradient(135deg, #14532d 0%, #16a34a 60%, #22c55e 100%);
+  box-shadow: 0 8px 28px rgba(22,163,74,0.45);
+}
+
+/* All KPI text is white on the colored bg */
+.kpi-card h3 {
+  color: #ffffff !important;
+  font-weight: 800;
+  font-size: 2rem;
+  letter-spacing: -0.5px;
+  margin: 6px 0;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.kpi-card .kpi-label {
+  color: rgba(255,255,255,0.80) !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.kpi-card .kpi-sub {
+  color: rgba(255,255,255,0.90) !important;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.kpi-card .kpi-sub:hover {
+  color: #ffffff !important;
+}
+
+/* KPI icon bubble */
+.kpi-card .kpi-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.22);
+  border: 2px solid rgba(255,255,255,0.30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.kpi-card:hover .kpi-icon {
+  background: rgba(255,255,255,0.32);
+  transform: rotate(-6deg) scale(1.1);
+}
+
+/* ============ ENHANCED STAT CARD STYLES ============ */
+.stat-card {
+  background: linear-gradient(135deg, #fdf4e7 0%, #f5e6cc 100%);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(30,60,114,0.12);
+  transition: all 0.3s ease;
+  border: 1px solid #d9c4a0 !important;
+  height: 100%;
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(30,60,114,0.2);
+  border-color: #a07830 !important;
+}
+
+.stat-card .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: white;
+    margin-bottom: 12px;
+}
+
+.stat-card .stat-icon.bg-primary {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+}
+
+.stat-card .stat-icon.bg-success {
+    background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+.stat-card .stat-icon.bg-warning {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.stat-card .stat-icon.bg-info {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.stat-card .stat-icon.bg-secondary {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+.stat-card .stat-icon.bg-purple {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.stat-card h3 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1e3c72;
+    margin-bottom: 3px;
+}
+
+.stat-card p {
+    color: #5a4a38;
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* ============ CHART CARD STYLES ============ */
+.chart-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 4px 20px rgba(30,60,114,0.10);
+    height: 100%;
+    border: 1px solid #dde3f0 !important;
+    border-top: 4px solid #2a5298 !important;
+    transition: box-shadow 0.3s ease;
+}
+
+.chart-card:hover {
+    box-shadow: 0 10px 32px rgba(30,60,114,0.16);
+}
+
+.chart-card h5 {
+    color: #1e3c72;
+    font-weight: 700;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 280px;
+    width: 100%;
+}
+
+.chart-container-sm {
+    position: relative;
+    height: 220px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-container canvas,
+.chart-container-sm canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* ============ KPI DETAILS ROW (Budget strip) ============ */
+.kpi-detail-strip {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-radius: 14px;
+    padding: 20px 24px;
+    box-shadow: 0 6px 24px rgba(30,60,114,0.30);
+    border: none !important;
+}
+
+.kpi-detail-strip h6 {
+    color: rgba(255,255,255,0.70) !important;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.kpi-detail-strip h4 {
+    color: #ffffff !important;
+    font-weight: 800;
+    font-size: 1.4rem;
+}
+
+.kpi-detail-strip .border-end {
+    border-color: rgba(255,255,255,0.18) !important;
+}
+
+.kpi-detail-strip small {
+    color: rgba(255,255,255,0.85) !important;
+}
+
+.kpi-detail-strip .progress {
+    background: rgba(255,255,255,0.20) !important;
+}
+
+/* ============ DATA TABLE STYLES ============ */
+.data-table {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 4px 20px rgba(30,60,114,0.10);
+    border: 1px solid #dde3f0 !important;
+    border-top: 4px solid #c49a4a !important;
+}
+
+.data-table h5 {
+    color: #1e3c72;
+    font-weight: 700;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.table th {
+    background: linear-gradient(90deg, #1e3c72, #2a5298);
+    color: #ffffff !important;
+    font-weight: 700;
+    border: none;
+    padding: 13px 12px;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.table td {
+    padding: 12px;
+    vertical-align: middle;
+    border-color: #eef1f8;
+    font-size: 0.85rem;
+    color: #2c3e50;
+}
+
+.table-hover tbody tr:hover {
+    background: rgba(30,60,114,0.04);
+}
+
+/* ============ ACTIVITY LIST STYLES ============ */
+.activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid #eef1f8;
+}
+
+.activity-item:last-child { 
+    border-bottom: none; 
+}
+
+.activity-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.activity-content h6 {
+    margin: 0 0 3px 0;
+    font-size: 0.85rem;
+    color: #1e3c72;
+    font-weight: 600;
+}
+
+.activity-content small {
+    color: #7a8ba0;
+    font-size: 0.75rem;
+}
+
+/* ============ QUICK ACTION BUTTON STYLES ============ */
+.quick-action-btn {
+    background: #ffffff;
+    border: 2px solid #dde3f0;
+    border-radius: 12px;
+    padding: 18px 15px;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+    text-decoration: none;
+    color: #1e3c72;
+    display: block;
+    box-shadow: 0 2px 10px rgba(30,60,114,0.07);
+}
+
+.quick-action-btn:hover {
+    border-color: #2a5298;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    transform: translateY(-4px) scale(1.03);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(30,60,114,0.28);
+}
+
+.quick-action-btn i {
+    font-size: 1.6rem;
+    color: #2a5298;
+    margin-bottom: 10px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.quick-action-btn:hover i {
+    color: #ffffff;
+    transform: scale(1.15);
+}
+
+.quick-action-btn span {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+/* ============ PAGE HEADER STYLES ============ */
+.page-header {
+    background: linear-gradient(135deg, rgba(30, 60, 114, 0.03), rgba(42, 82, 152, 0.03));
+    border-bottom: 2px solid #e9ecef;
+    padding: 30px 0;
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    color: #1e3c72;
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+.page-header .text-primary {
+    color: #2a5298 !important;
+}
+
+.page-header .text-muted {
+    color: #6c757d !important;
+    font-size: 0.95rem;
+}
+
+/* ============ FINANCIAL CARD ENHANCEMENTS ============ */
+.financial-card {
+    border-left: 4px solid #2a5298;
+    background: linear-gradient(135deg, #fdf4e7 0%, #f5e6cc 100%);
+}
+
+.financial-card:hover {
+    border-left-color: #1e3c72;
+    box-shadow: 0 10px 30px rgba(30, 60, 114, 0.15);
+}
+
+.financial-card h3 {
+    font-size: 1.8rem;
+    color: #1e3c72;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.financial-card p {
+    font-weight: 600;
+    color: #495057;
+}
+
+.financial-card .stat-icon {
+    min-width: 50px;
+    max-width: 50px;
+}
+
+/* ============ FINANCIAL ACTION BUTTON STYLES ============ */
+.financial-action-btn {
+    background: white;
+    border: 2px solid #e1e5eb;
+    border-radius: 8px;
+    padding: 12px 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: #333;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.financial-action-btn:hover {
+    border-color: #2a5298;
+    background: rgba(42, 82, 152, 0.05);
+    transform: translateY(-2px);
+    color: #1e3c72;
+    box-shadow: 0 4px 12px rgba(42, 82, 152, 0.15);
+}
+
+.financial-action-btn i {
+    font-size: 1.2rem;
+    color: #2a5298;
+}
+
+.financial-action-btn:hover i {
+    color: #1e3c72;
+}
+
+/* ============ FINANCIAL TABS STYLES ============ */
+.financial-tabs {
+    border-bottom: 2px solid #e9ecef;
+    gap: 10px;
+}
+
+.financial-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 12px 16px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.financial-tabs .nav-link:hover {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+}
+
+.financial-tabs .nav-link.active {
+    color: #1e3c72;
+    background: none;
+    border-bottom-color: #1e3c72;
+    box-shadow: inset 0 -3px 0 0 #1e3c72;
+}
+
+.financial-tabs .nav-link i {
+    margin-right: 8px;
+}
+
+/* ============ RESPONSIVE ADJUSTMENTS ============ */
+@media (max-width: 991px) {
+    .chart-container {
+        height: 220px;
+    }
+    
+    .page-header {
+        padding: 20px 0;
+    }
+    
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .kpi-card h3 {
+        font-size: 1.6rem;
+    }
+    
+    .chart-container {
+        height: 200px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+    }
+    
+    .stat-card h3 {
+        font-size: 1.3rem;
+    }
+    
+    .financial-card h3 {
+        font-size: 1.5rem;
+    }
+    
+    .page-header {
+        padding: 15px 0;
+    }
+    
+    .page-header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .financial-action-btn {
+        padding: 10px 16px;
+        font-size: 0.85rem;
+    }
+    
+    .financial-tabs .nav-link {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+}
+
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1e3c72, #2a5298);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 14px 34px rgba(30, 60, 114, 0.22);
+  border-color: #a07830;
+  border-left-color: #a07830;
+}
+
+.kpi-card:hover::before {
+  opacity: 1;
+}
+
+.kpi-card h3 {
+  color: #1e3c72;
+  font-weight: 700;
+  margin: 8px 0;
+}
+
+.kpi-card p {
+  color: #6c757d;
+  font-size: 0.85rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+.kpi-card .stat-muted {
+  color: #8a7a6a;
+}
+
+/* ============ ENHANCED STAT CARD STYLES ============ */
+.stat-card {
+  background: linear-gradient(135deg, #fdf4e7 0%, #f5e6cc 100%);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(30,60,114,0.12);
+  transition: all 0.3s ease;
+  border: 1px solid #d9c4a0;
+  height: 100%;
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(30,60,114,0.2);
+  border-color: #a07830;
+}
+
+.stat-card .stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: white;
+    margin-bottom: 12px;
+}
+
+.stat-card .stat-icon.bg-primary {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+}
+
+.stat-card .stat-icon.bg-success {
+    background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+.stat-card .stat-icon.bg-warning {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.stat-card .stat-icon.bg-info {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.stat-card .stat-icon.bg-secondary {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+.stat-card .stat-icon.bg-purple {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.stat-card h3 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 3px;
+}
+
+.stat-card p {
+    color: #666;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+/* ============ CHART CARD STYLES ============ */
+.chart-card {
+    background: linear-gradient(160deg, #fdf4e7 0%, #f5e6cc 100%);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 18px rgba(30,60,114,0.12);
+    height: 100%;
+    border: 1px solid #d9c4a0;
+    border-top: 3px solid #c49a4a;
+}
+
+.chart-card h5 {
+    color: #1e3c72;
+    font-weight: 600;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 280px;
+    width: 100%;
+}
+
+.chart-container-sm {
+    position: relative;
+    height: 220px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-container canvas,
+.chart-container-sm canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* ============ DATA TABLE STYLES ============ */
+.data-table {
+    background: linear-gradient(160deg, #fdf4e7 0%, #f5e6cc 100%);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 18px rgba(30,60,114,0.12);
+    border: 1px solid #d9c4a0;
+    border-top: 3px solid #c49a4a;
+}
+
+.data-table h5 {
+    color: #1e3c72;
+    font-weight: 600;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.table th {
+    background: #e8d5b0;
+    color: #1e3c72;
+    font-weight: 700;
+    border: none;
+    padding: 12px;
+    font-size: 0.85rem;
+    letter-spacing: 0.3px;
+}
+
+.table td {
+    padding: 12px;
+    vertical-align: middle;
+    border-color: #f0f0f0;
+    font-size: 0.85rem;
+}
+
+/* ============ ACTIVITY LIST STYLES ============ */
+.activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.activity-item:last-child { 
+    border-bottom: none; 
+}
+
+.activity-icon {
+    width: 35px;
+    height: 35px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-size: 0.8rem;
+}
+
+.activity-content h6 {
+    margin: 0 0 3px 0;
+    font-size: 0.85rem;
+    color: #333;
+}
+
+.activity-content small {
+    color: #999;
+    font-size: 0.75rem;
+}
+
+/* ============ QUICK ACTION BUTTON STYLES ============ */
+.quick-action-btn {
+    background: linear-gradient(135deg, #fdf4e7 0%, #f5e6cc 100%);
+    border: 2px solid #d9c4a0;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: #333;
+    display: block;
+}
+
+.quick-action-btn:hover {
+    border-color: #2a5298;
+    background: linear-gradient(135deg, #f0ece4 0%, #ebe3d8 100%);
+    transform: translateY(-2px);
+    color: #1e3c72;
+    box-shadow: 0 6px 16px rgba(30,60,114,0.12);
+}
+
+.quick-action-btn i {
+    font-size: 1.5rem;
+    color: #2a5298;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.quick-action-btn span {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* ============ PAGE HEADER STYLES ============ */
+.page-header {
+    background: linear-gradient(135deg, rgba(30, 60, 114, 0.03), rgba(42, 82, 152, 0.03));
+    border-bottom: 2px solid #e9ecef;
+    padding: 30px 0;
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    color: #1e3c72;
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+.page-header .text-primary {
+    color: #2a5298 !important;
+}
+
+.page-header .text-muted {
+    color: #6c757d !important;
+    font-size: 0.95rem;
+}
+
+/* ============ FINANCIAL CARD ENHANCEMENTS ============ */
+.financial-card {
+    border-left: 4px solid #2a5298;
+    background: linear-gradient(135deg, #fdf4e7 0%, #f5e6cc 100%);
+}
+
+.financial-card:hover {
+    border-left-color: #1e3c72;
+    box-shadow: 0 10px 30px rgba(30, 60, 114, 0.15);
+}
+
+.financial-card h3 {
+    font-size: 1.8rem;
+    color: #1e3c72;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.financial-card p {
+    font-weight: 600;
+    color: #495057;
+}
+
+.financial-card .stat-icon {
+    min-width: 50px;
+    max-width: 50px;
+}
+
+/* ============ FINANCIAL ACTION BUTTON STYLES ============ */
+.financial-action-btn {
+    background: white;
+    border: 2px solid #e1e5eb;
+    border-radius: 8px;
+    padding: 12px 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: #333;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.financial-action-btn:hover {
+    border-color: #2a5298;
+    background: rgba(42, 82, 152, 0.05);
+    transform: translateY(-2px);
+    color: #1e3c72;
+    box-shadow: 0 4px 12px rgba(42, 82, 152, 0.15);
+}
+
+.financial-action-btn i {
+    font-size: 1.2rem;
+    color: #2a5298;
+}
+
+.financial-action-btn:hover i {
+    color: #1e3c72;
+}
+
+/* ============ FINANCIAL TABS STYLES ============ */
+.financial-tabs {
+    border-bottom: 2px solid #e9ecef;
+    gap: 10px;
+}
+
+.financial-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 12px 16px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.financial-tabs .nav-link:hover {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+}
+
+.financial-tabs .nav-link.active {
+    color: #1e3c72;
+    background: none;
+    border-bottom-color: #1e3c72;
+    box-shadow: inset 0 -3px 0 0 #1e3c72;
+}
+
+.financial-tabs .nav-link i {
+    margin-right: 8px;
+}
+
+/* ============ RESPONSIVE ADJUSTMENTS ============ */
+@media (max-width: 991px) {
+    .chart-container {
+        height: 220px;
+    }
+    
+    .page-header {
+        padding: 20px 0;
+    }
+    
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .kpi-card h3 {
+        font-size: 1.4rem;
+    }
+    
+    .chart-container {
+        height: 200px;
+    }
+    
+    .stat-card {
+        padding: 15px;
+    }
+    
+    .stat-card h3 {
+        font-size: 1.3rem;
+    }
+    
+    .financial-card h3 {
+        font-size: 1.5rem;
+    }
+    
+    .page-header {
+        padding: 15px 0;
+    }
+    
+    .page-header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .financial-action-btn {
+        padding: 10px 16px;
+        font-size: 0.85rem;
+    }
+    
+    .financial-tabs .nav-link {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+}

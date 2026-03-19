@@ -1,0 +1,372 @@
+﻿@model List<PerformanceRecord>
+@using CVM_FinalProject.Models
+@using CVM_FinalProject.Services
+@{
+    ViewData["Title"] = "Performance Monitoring";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+    var perfSummary = ViewBag.PerfSummary as PerformanceSummaryViewModel;
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Performance Monitoring</h2>
+            <p>Track and monitor employee performance evaluations</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPerformanceModal">
+            <i class="fas fa-plus me-1"></i>Record Evaluation
+        </button>
+    </div>
+</div>
+
+<!-- Performance Summary Cards -->
+@if (perfSummary != null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>@perfSummary.TotalRecords</h3>
+                <p>Total Records</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h3>@perfSummary.RecordsThisMonth</h3>
+                <p>This Month</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>@perfSummary.EmployeesEvaluated</h3>
+                <p>Evaluated</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <h3>@perfSummary.EvaluationCoverage.ToString("F1")%</h3>
+                <p>Coverage</p>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add Performance Modal -->
+<div class="modal fade" id="addPerformanceModal" tabindex="-1" aria-labelledby="addPerformanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addPerformanceModalLabel">
+                    <i class="fas fa-user-check me-2"></i>Record Employee Performance
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-action="RecordPerformance" id="performanceForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Employee Selection -->
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label">Employee <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-lg" id="employeeId" name="employeeId" required>
+                                <option value="">-- Select Employee --</option>
+                                @if (ViewBag.Employees != null)
+                                {
+                                    foreach (var emp in ViewBag.Employees)
+                                    {
+                                        <option value="@emp.EmployeeId">@emp.User?.FullName - @emp.Position</option>
+                                    }
+                                }
+                            </select>
+                            <small class="form-text text-muted">Choose the employee to evaluate</small>
+                        </div>
+
+                        <!-- Evaluation Period -->
+                        <div class="col-md-6 mb-3">
+                            <label for="evaluationPeriod" class="form-label">Evaluation Period <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg" id="evaluationPeriod" name="evaluationPeriod" 
+                                   placeholder="e.g., Q1 2026" required>
+                            <small class="form-text text-muted">Format: Q1/Q2/Q3/Q4 YYYY</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Tasks Completed -->
+                        <div class="col-md-6 mb-3">
+                            <label for="tasksCompleted" class="form-label">Tasks Completed <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control form-control-lg" id="tasksCompleted" name="tasksCompleted" 
+                                   min="0" placeholder="0" required>
+                            <small class="form-text text-muted">Number of completed tasks</small>
+                        </div>
+
+                        <!-- Tasks Pending -->
+                        <div class="col-md-6 mb-3">
+                            <label for="tasksPending" class="form-label">Tasks Pending <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control form-control-lg" id="tasksPending" name="tasksPending" 
+                                   min="0" placeholder="0" required>
+                            <small class="form-text text-muted">Number of pending tasks</small>
+                        </div>
+                    </div>
+
+                    <!-- Performance Rating with Stars -->
+                    <div class="mb-4">
+                        <label class="form-label d-block">Performance Rating <span class="text-danger">*</span></label>
+                        <div class="star-rating mb-2">
+                            <input type="hidden" id="performanceRating" name="performanceRating" value="3" required>
+                            <div class="stars-container" id="starsContainer">
+                                <span class="star" data-rating="1" title="Poor">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                <span class="star" data-rating="2" title="Below Average">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                <span class="star" data-rating="3" title="Average" style="color: #ffc107;">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                <span class="star" data-rating="4" title="Good">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                <span class="star" data-rating="5" title="Excellent">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                            </div>
+                            <small class="form-text text-muted d-block mt-2">
+                                <span id="ratingText">Average (3/5)</span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks & Comments</label>
+                        <textarea class="form-control" id="remarks" name="remarks" rows="4" 
+                                  placeholder="Enter performance remarks, strengths, areas for improvement..."></textarea>
+                        <small class="form-text text-muted">Optional: Add detailed feedback about the employee's performance</small>
+                    </div>
+
+                    <!-- Info Alert -->
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> This performance record will be saved to the database and displayed in the Performance Records list below.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check me-2"></i>Record Evaluation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Performance Records Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="data-table">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                <h5 class="mb-0">Performance Records</h5>
+                <div class="d-flex gap-2 mt-2 mt-md-0">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search..." id="searchPerformance" style="width: 200px;">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="performanceTable">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Position</th>
+                            <th>Evaluation Period</th>
+                            <th>Remarks</th>
+                            <th>Recorded Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var record in Model)
+                            {
+                                <tr>
+                                    <td><strong>@record.Employee?.User?.FullName</strong></td>
+                                    <td>@record.Employee?.Position</td>
+                                    <td>@record.EvaluationPeriod</td>
+                                    <td>
+                                        <span title="@record.Remarks">
+                                            @(record.Remarks?.Length > 50 ? record.Remarks.Substring(0, 50) + "..." : record.Remarks)
+                                        </span>
+                                    </td>
+                                    <td>@record.RecordedAt.ToString("MMM dd, yyyy")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewRecord('@record.PerformanceId')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox me-2"></i>No performance records found
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .star-rating {
+            display: inline-block;
+        }
+
+        .stars-container {
+            display: flex;
+            gap: 10px;
+            font-size: 2.5rem;
+        }
+
+        .star {
+            cursor: pointer;
+            color: #ddd;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .star:hover,
+        .star.active {
+            color: #ffc107;
+            transform: scale(1.1);
+        }
+
+        .star i {
+            display: block;
+        }
+
+        /* Rating text styles */
+        .rating-poor { color: #dc3545; }
+        .rating-below { color: #fd7e14; }
+        .rating-average { color: #ffc107; }
+        .rating-good { color: #28a745; }
+        .rating-excellent { color: #0d6efd; }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Star Rating Functionality
+            const stars = document.querySelectorAll('.star');
+            const ratingInput = document.getElementById('performanceRating');
+            const ratingText = document.getElementById('ratingText');
+            const ratingDescriptions = {
+                1: 'Poor (1/5)',
+                2: 'Below Average (2/5)',
+                3: 'Average (3/5)',
+                4: 'Good (4/5)',
+                5: 'Excellent (5/5)'
+            };
+
+            let currentRating = 3; // Default
+
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    currentRating = parseInt(this.getAttribute('data-rating'));
+                    ratingInput.value = currentRating;
+                    updateStars(currentRating);
+                    updateRatingText(currentRating);
+                });
+
+                star.addEventListener('mouseenter', function() {
+                    const hoverRating = parseInt(this.getAttribute('data-rating'));
+                    updateStars(hoverRating);
+                });
+            });
+
+            document.getElementById('starsContainer').addEventListener('mouseleave', function() {
+                updateStars(currentRating);
+            });
+
+            function updateStars(rating) {
+                stars.forEach(star => {
+                    const starRating = parseInt(star.getAttribute('data-rating'));
+                    if (starRating <= rating) {
+                        star.classList.add('active');
+                    } else {
+                        star.classList.remove('active');
+                    }
+                });
+            }
+
+            function updateRatingText(rating) {
+                ratingText.textContent = ratingDescriptions[rating] || 'Average (3/5)';
+            }
+
+            // Set initial state
+            updateStars(currentRating);
+            updateRatingText(currentRating);
+
+            // Form submission feedback
+            const performanceForm = document.getElementById('performanceForm');
+            if (performanceForm) {
+                performanceForm.addEventListener('submit', function(e) {
+                    // Validate form
+                    if (!this.checkValidity()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                });
+            }
+        });
+
+        function searchPerformance() {
+            const searchInput = document.getElementById('searchPerformance').value.toLowerCase();
+            const rows = document.querySelectorAll('#performanceTable tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchInput) ? '' : 'none';
+            });
+        }
+
+        function viewRecord(id) {
+            // Can be expanded to show a modal with full details
+            alert('Viewing performance record: ' + id);
+        }
+
+        document.getElementById('searchPerformance')?.addEventListener('keyup', searchPerformance);
+    </script>
+}

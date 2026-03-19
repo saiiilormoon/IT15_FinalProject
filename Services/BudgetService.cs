@@ -1,0 +1,444 @@
+using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+
+namespace CVM_FinalProject.Services
+{
+    /// <summary>
+    /// Service for managing budgets
+    /// </summary>
+    public class BudgetService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<BudgetService> _logger;
+
+        public BudgetService(ApplicationDbContext context, ILogger<BudgetService> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        // Create budget for department
+        public async Task<Budget> CreateBudgetAsync(int departmentId, string budgetPeriod, decimal allocatedAmount)
+        {
+            try
+            {
+                // Verify department exists
+                var dept = await _context.Departments.FindAsync(departmentId);
+                if (dept == null)
+                    throw new InvalidOperationException("Department not found");
+
+                var budget = new Budget
+                {
+                    DepartmentId = departmentId,
+                    BudgetPeriod = budgetPeriod,
+                    AllocatedAmount = allocatedAmount,
+                    UsedAmount = 0,
+                    RemainingAmount = allocatedAmount
+                };
+
+                _context.Budgets.Add(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Budget created for department {departmentId}: ${allocatedAmount}");
+                return budget;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating budget");
+                throw;
+            }
+        }
+
+        // Get budget for department
+        public async Task<Budget?> GetDepartmentBudgetAsync(int departmentId)
+        {
+            try
+            {
+                return await _context.Budgets
+                    .FirstOrDefaultAsync(b => b.DepartmentId == departmentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting department budget");
+                throw;
+            }
+        }
+
+        // Get all budgets
+        public async Task<List<Budget>> GetAllBudgetsAsync()
+        {
+            try
+            {
+                return await _context.Budgets
+                    .Include(b => b.Department)
+                    .OrderBy(b => b.Department!.DepartmentName)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all budgets");
+                throw;
+            }
+        }
+
+        // Update used amount
+        public async Task<Budget> UpdateUsedAmountAsync(int budgetId, decimal usedAmount)
+        {
+            try
+            {
+                var budget = await _context.Budgets.FindAsync(budgetId);
+                if (budget == null)
+                    throw new InvalidOperationException("Budget not found");
+
+                budget.UsedAmount = usedAmount;
+                budget.RemainingAmount = budget.AllocatedAmount - usedAmount;
+
+                _context.Budgets.Update(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Budget updated: {budgetId}, Used: ${usedAmount}");
+                return budget;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating used amount");
+                throw;
+            }
+        }
+
+        // Add expense to budget
+        public async Task<Budget> AddExpenseAsync(int budgetId, decimal expenseAmount)
+        {
+            try
+            {
+                var budget = await _context.Budgets.FindAsync(budgetId);
+                if (budget == null)
+                    throw new InvalidOperationException("Budget not found");
+
+                budget.UsedAmount += expenseAmount;
+                budget.RemainingAmount = budget.AllocatedAmount - budget.UsedAmount;
+
+                if (budget.RemainingAmount < 0)
+                    _logger.LogWarning($"Budget exceeded for budget {budgetId}");
+
+                _context.Budgets.Update(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Expense added to budget {budgetId}: ${expenseAmount}");
+                return budget;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding expense");
+                throw;
+            }
+        }
+
+        // Get budget statistics
+        public async Task<BudgetStatsViewModel> GetBudgetStatsAsync()
+        {
+            try
+            {
+                var budgets = await _context.Budgets
+                    .Include(b => b.Department)
+                    .ToListAsync();
+
+                var totalAllocated = budgets.Sum(b => b.AllocatedAmount);
+                var totalUsed = budgets.Sum(b => b.UsedAmount);
+                var totalRemaining = budgets.Sum(b => b.RemainingAmount);
+
+                var budgetsExceeded = budgets.Count(b => b.RemainingAmount < 0);
+                var budgetsLow = budgets.Count(b => b.RemainingAmount > 0 && b.RemainingAmount < (b.AllocatedAmount * 0.2m));
+
+                return new BudgetStatsViewModel
+                {
+                    TotalAllocated = totalAllocated,
+                    TotalUsed = totalUsed,
+                    TotalRemaining = totalRemaining,
+                    TotalBudgets = budgets.Count,
+                    PercentageUsed = totalAllocated > 0 ? (double)((totalUsed / totalAllocated) * 100) : 0,
+                    BudgetsExceeded = budgetsExceeded,
+                    BudgetsLowBalance = budgetsLow,
+                    DepartmentBudgets = budgets.Select(b => new BudgetDetailViewModel
+                    {
+                        DepartmentName = b.Department?.DepartmentName ?? "Unknown",
+                        BudgetPeriod = b.BudgetPeriod ?? "N/A",
+                        AllocatedAmount = b.AllocatedAmount,
+                        UsedAmount = b.UsedAmount,
+                        RemainingAmount = b.RemainingAmount,
+                        PercentageUsed = b.AllocatedAmount > 0 ? (double)((b.UsedAmount / b.AllocatedAmount) * 100) : 0,
+                        Status = GetBudgetStatus(b)
+                    }).ToList()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting budget stats");
+                throw;
+            }
+        }
+
+        // Get budget status
+        private string GetBudgetStatus(Budget budget)
+        {
+            if (budget.RemainingAmount < 0)
+                return "Exceeded";
+            if (budget.RemainingAmount < (budget.AllocatedAmount * 0.2m))
+                return "Low";
+            if (budget.RemainingAmount < (budget.AllocatedAmount * 0.5m))
+                return "Moderate";
+            return "Healthy";
+        }
+
+        // Delete budget
+        public async Task DeleteBudgetAsync(int budgetId)
+        {
+            try
+            {
+                var budget = await _context.Budgets.FindAsync(budgetId);
+                if (budget == null)
+                    throw new InvalidOperationException("Budget not found");
+
+                _context.Budgets.Remove(budget);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Budget deleted: {budgetId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting budget");
+                throw;
+            }
+        }
+
+        // Get KPI Summary for Dashboard
+        public async Task<BudgetKPISummaryViewModel> GetBudgetKPISummaryAsync()
+        {
+            try
+            {
+                var budgets = await _context.Budgets
+                    .Include(b => b.Department)
+                    .ToListAsync();
+
+                var totalAllocated = budgets.Sum(b => b.AllocatedAmount);
+                var totalUsed = budgets.Sum(b => b.UsedAmount);
+                var totalRemaining = totalAllocated - totalUsed;
+
+                var utilizationRate = totalAllocated > 0 
+                    ? Math.Round((totalUsed / totalAllocated) * 100, 2)
+                    : 0m;
+
+                var budgetStatus = GetKPIStatus(utilizationRate);
+
+                return new BudgetKPISummaryViewModel
+                {
+                    TotalBudgetAllocated = totalAllocated,
+                    TotalBudgetUsed = totalUsed,
+                    RemainingBudget = totalRemaining,
+                    BudgetUtilizationRate = utilizationRate,
+                    BudgetStatus = budgetStatus,
+                    TotalDepartments = budgets.Select(b => b.DepartmentId).Distinct().Count(),
+                    BudgetsOnTrack = budgets.Count(b => (b.UsedAmount / (b.AllocatedAmount > 0 ? b.AllocatedAmount : 1)) <= 0.8m),
+                    BudgetsAtRisk = budgets.Count(b => (b.UsedAmount / (b.AllocatedAmount > 0 ? b.AllocatedAmount : 1)) > 0.8m && (b.UsedAmount / (b.AllocatedAmount > 0 ? b.AllocatedAmount : 1)) <= 1.0m),
+                    BudgetsExceeded = budgets.Count(b => (b.UsedAmount / (b.AllocatedAmount > 0 ? b.AllocatedAmount : 1)) > 1.0m)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting budget KPI summary");
+                throw;
+            }
+        }
+
+        // Get KPI status based on utilization rate
+        private string GetKPIStatus(decimal utilizationRate)
+        {
+            if (utilizationRate <= 50)
+                return "Optimal";
+            if (utilizationRate <= 80)
+                return "Good";
+            if (utilizationRate <= 100)
+                return "Caution";
+            return "Exceeded";
+        }
+
+        // Get Dashboard KPI Summary - All metrics for main dashboard
+        public async Task<DashboardKPISummaryViewModel> GetDashboardKPISummaryAsync()
+        {
+            try
+            {
+                // Employee KPIs
+                var totalEmployees = await _context.Employees.CountAsync(e => !e.IsArchived);
+                var activeEmployees = await _context.Employees.CountAsync(e => !e.IsArchived && e.EmployeeStatus == "Active");
+
+                // Department KPIs
+                var totalDepartments = await _context.Departments.CountAsync(d => !d.IsArchived);
+
+                // Budget KPIs
+                var budgets = await _context.Budgets.ToListAsync();
+                var totalAllocated = budgets.Sum(b => b.AllocatedAmount);
+                var totalUsed = budgets.Sum(b => b.UsedAmount);
+                var totalRemaining = totalAllocated - totalUsed;
+                var budgetUtilizationRate = totalAllocated > 0 
+                    ? Math.Round((totalUsed / totalAllocated) * 100, 2)
+                    : 0m;
+
+                // Process KPIs
+                var totalProcesses = await _context.OperationalProcesses.CountAsync();
+                var pendingProcesses = await _context.OperationalProcesses.CountAsync(p => p.Status == ProcessStatus.Pending);
+                var approvedProcesses = await _context.OperationalProcesses.CountAsync(p => p.Status == ProcessStatus.Approved);
+                var completedProcesses = await _context.OperationalProcesses.CountAsync(p => p.Status == ProcessStatus.Completed);
+
+                // Request KPIs
+                var totalRequests = await _context.EmployeeRequests.CountAsync();
+                var pendingRequests = await _context.EmployeeRequests.CountAsync(r => r.Status == RequestStatus.Pending);
+                var approvedRequests = await _context.EmployeeRequests.CountAsync(r => r.Status == RequestStatus.Approved);
+                var completedRequests = await _context.EmployeeRequests.CountAsync(r => r.Status == RequestStatus.Completed);
+
+                // Expense KPIs
+                var expenses = await _context.Expenses.Where(e => !e.IsArchived).ToListAsync();
+                var totalExpenses = expenses.Sum(e => e.Amount);
+                var pendingExpenses = expenses.Count(e => e.Status == "Pending");
+                var approvedExpenses = expenses.Count(e => e.Status == "Approved");
+
+                // Performance KPIs
+                var performanceRecords = await _context.PerformanceRecords.ToListAsync();
+                var avgPerformanceRating = performanceRecords.Count > 0 
+                    ? Convert.ToDecimal(performanceRecords.Average(p => p.PerformanceRating))
+                    : 0m;
+                avgPerformanceRating = Math.Round(avgPerformanceRating, 2);
+
+                return new DashboardKPISummaryViewModel
+                {
+                    // Employee KPIs
+                    TotalEmployees = totalEmployees,
+                    ActiveEmployees = activeEmployees,
+
+                    // Department KPIs
+                    TotalDepartments = totalDepartments,
+
+                    // Budget KPIs
+                    TotalBudgetAllocated = totalAllocated,
+                    TotalBudgetUsed = totalUsed,
+                    RemainingBudget = totalRemaining,
+                    BudgetUtilizationRate = budgetUtilizationRate,
+                    BudgetStatus = GetKPIStatus(budgetUtilizationRate),
+
+                    // Process KPIs
+                    TotalProcesses = totalProcesses,
+                    PendingProcesses = pendingProcesses,
+                    ApprovedProcesses = approvedProcesses,
+                    CompletedProcesses = completedProcesses,
+                    ProcessCompletionRate = totalProcesses > 0 
+                        ? Math.Round((completedProcesses / (decimal)totalProcesses) * 100, 2)
+                        : 0m,
+
+                    // Request KPIs
+                    TotalRequests = totalRequests,
+                    PendingRequests = pendingRequests,
+                    ApprovedRequests = approvedRequests,
+                    CompletedRequests = completedRequests,
+                    RequestApprovalRate = totalRequests > 0 
+                        ? Math.Round((approvedRequests / (decimal)totalRequests) * 100, 2)
+                        : 0m,
+
+                    // Expense KPIs
+                    TotalExpenses = totalExpenses,
+                    PendingExpenses = pendingExpenses,
+                    ApprovedExpenses = approvedExpenses,
+
+                    // Performance KPIs
+                    AveragePerformanceRating = avgPerformanceRating,
+                    PerformanceRecordsCount = performanceRecords.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting dashboard KPI summary");
+                throw;
+            }
+        }
+    }
+
+    // View model for budget statistics
+    public class BudgetStatsViewModel
+    {
+        public decimal TotalAllocated { get; set; }
+        public decimal TotalUsed { get; set; }
+        public decimal TotalRemaining { get; set; }
+        public int TotalBudgets { get; set; }
+        public double PercentageUsed { get; set; }
+        public int BudgetsExceeded { get; set; }
+        public int BudgetsLowBalance { get; set; }
+        public List<BudgetDetailViewModel> DepartmentBudgets { get; set; } = new();
+    }
+
+    // View model for budget details
+    public class BudgetDetailViewModel
+    {
+        public string DepartmentName { get; set; } = string.Empty;
+        public string? BudgetPeriod { get; set; }
+        public decimal AllocatedAmount { get; set; }
+        public decimal UsedAmount { get; set; }
+        public decimal RemainingAmount { get; set; }
+        public double PercentageUsed { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
+    // View model for KPI Summary
+    public class BudgetKPISummaryViewModel
+    {
+        public decimal TotalBudgetAllocated { get; set; }
+        public decimal TotalBudgetUsed { get; set; }
+        public decimal RemainingBudget { get; set; }
+        public decimal BudgetUtilizationRate { get; set; }
+        public string BudgetStatus { get; set; } = string.Empty;
+        public int TotalDepartments { get; set; }
+        public int BudgetsOnTrack { get; set; }
+        public int BudgetsAtRisk { get; set; }
+        public int BudgetsExceeded { get; set; }
+    }
+
+    // View model for Dashboard KPI Summary - All KPIs
+    public class DashboardKPISummaryViewModel
+    {
+        // Employee KPIs
+        public int TotalEmployees { get; set; }
+        public int ActiveEmployees { get; set; }
+
+        // Department KPIs
+        public int TotalDepartments { get; set; }
+
+        // Budget KPIs
+        public decimal TotalBudgetAllocated { get; set; }
+        public decimal TotalBudgetUsed { get; set; }
+        public decimal RemainingBudget { get; set; }
+        public decimal BudgetUtilizationRate { get; set; }
+        public string BudgetStatus { get; set; } = string.Empty;
+
+        // Process KPIs
+        public int TotalProcesses { get; set; }
+        public int PendingProcesses { get; set; }
+        public int ApprovedProcesses { get; set; }
+        public int CompletedProcesses { get; set; }
+        public decimal ProcessCompletionRate { get; set; }
+
+        // Request KPIs
+        public int TotalRequests { get; set; }
+        public int PendingRequests { get; set; }
+        public int ApprovedRequests { get; set; }
+        public int CompletedRequests { get; set; }
+        public decimal RequestApprovalRate { get; set; }
+
+        // Expense KPIs
+        public decimal TotalExpenses { get; set; }
+        public int PendingExpenses { get; set; }
+        public int ApprovedExpenses { get; set; }
+
+        // Performance KPIs
+        public decimal AveragePerformanceRating { get; set; }
+        public int PerformanceRecordsCount { get; set; }
+    }
+}

@@ -1,0 +1,364 @@
+﻿@{
+    ViewData["Title"] = "My Account";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+    
+    var currentUserRole = ViewBag.UserRole as string ?? "Employee";
+    var isAdmin = currentUserRole == "Admin" || currentUserRole == "SuperAdmin";
+    var isSuperAdmin = currentUserRole == "SuperAdmin";
+}
+
+<div class="page-header">
+    <h2>My Account</h2>
+    <p>Manage your account settings and preferences.</p>
+</div>
+
+<div class="row g-4">
+    <!-- Profile Section -->
+    <div class="col-lg-4">
+        <div class="chart-card text-center">
+            <div class="user-avatar mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem;">
+                @{
+                    var userName = ViewBag.UserName as string ?? "User";
+                    var initial = !string.IsNullOrEmpty(userName) ? userName[0].ToString().ToUpper() : "U";
+                }
+                @initial
+            </div>
+            <h4 class="mb-1">@userName</h4>
+            <p class="text-muted mb-3">@ViewBag.UserEmail</p>
+            <span class="badge bg-primary mb-3">@ViewBag.UserRole</span>
+            <hr>
+            <div class="text-start">
+                <p class="mb-2"><i class="fas fa-calendar text-muted me-2"></i><strong>Joined:</strong> January 2026</p>
+                <p class="mb-2"><i class="fas fa-clock text-muted me-2"></i><strong>Last Login:</strong> Today</p>
+                <p class="mb-0"><i class="fas fa-shield-alt text-muted me-2"></i><strong>Status:</strong> <span class="text-success">Active</span></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Tabs -->
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <ul class="nav nav-tabs" id="settingsTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#profile">
+                        <i class="fas fa-user me-1"></i>Profile
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#security">
+                        <i class="fas fa-lock me-1"></i>Security
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#notifications">
+                        <i class="fas fa-bell me-1"></i>Notifications
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="tab-content pt-4">
+                <!-- Profile Tab -->
+                <div class="tab-pane fade show active" id="profile">
+                    <form id="profileForm" asp-action="UpdateProfilePost" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="firstName" name="FirstName" value="@userName">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="lastName" name="LastName" value="@ViewBag.UserLastName">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" class="form-control" value="@ViewBag.UserEmail" readonly>
+                                @if (!isSuperAdmin)
+                                {
+                                    <small class="text-muted">Contact admin to change email</small>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phoneNumber" name="PhoneNumber" value="@ViewBag.UserPhone" placeholder="Enter phone number">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Department</label>
+                                <select class="form-select" disabled>
+                                    <option selected>Not Assigned</option>
+                                </select>
+                                @if (!isSuperAdmin)
+                                {
+                                    <small class="text-muted">Contact admin to change</small>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Role</label>
+                                @{
+                                    var roles = new[] { "SuperAdmin", "Admin", "Accountant", "HR", "Employee", "Auditor" };
+                                }
+                                @if (isSuperAdmin)
+                                {
+                                    <!-- Show role as plain text for SuperAdmin (no dropdown caret) -->
+                                    <input type="text" class="form-control" readonly value="@currentUserRole" />
+                                    <input type="hidden" id="currentRole" name="Role" value="@currentUserRole" />
+                                }
+                                else
+                                {
+                                    <select class="form-select" id="roleSelect" name="Role" @(isAdmin ? "" : "disabled")>
+                                        @foreach (var role in roles)
+                                        {
+                                            if (role == currentUserRole)
+                                            {
+                                                <option value="@role" selected>@role</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@role">@role</option>
+                                            }
+                                        }
+                                    </select>
+                                }
+                                @if (!isSuperAdmin)
+                                {
+                                    if (isAdmin)
+                                    {
+                                        <small class="text-muted">You can change roles as Admin</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Contact admin to change role</small>
+                                    }
+                                }
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary" onclick="saveProfile()">
+                                    <i class="fas fa-save me-1"></i>Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Security Tab -->
+                <div class="tab-pane fade" id="security">
+                    <h5 class="mb-3">Change Password</h5>
+                    <form id="passwordForm">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Current Password</label>
+                                <input type="password" class="form-control" placeholder="Enter current password">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">New Password</label>
+                                <input type="password" class="form-control" placeholder="Enter new password">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" placeholder="Confirm new password">
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary" onclick="changePassword()">
+                                    <i class="fas fa-key me-1"></i>Update Password
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <h5 class="mb-3">Two-Factor Authentication</h5>
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                        <div>
+                            <h6 class="mb-1">Two-Factor Authentication</h6>
+                            <small class="text-muted">Add an extra layer of security to your account</small>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="twoFactor" style="width: 3rem; height: 1.5rem;">
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h5 class="mb-3">Active Sessions</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Device</th>
+                                    <th>Location</th>
+                                    <th>Last Active</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><i class="fas fa-desktop me-2"></i>Windows PC - Chrome</td>
+                                    <td>Philippines</td>
+                                    <td><span class="badge bg-success">Current</span></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Notifications Tab -->
+                <div class="tab-pane fade" id="notifications">
+                    <h5 class="mb-3">Email Notifications</h5>
+                    <div class="mb-3">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="emailReports" checked>
+                            <label class="form-check-label" for="emailReports">Report generation notifications</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="emailBudget" checked>
+                            <label class="form-check-label" for="emailBudget">Budget alerts</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="emailProcess" checked>
+                            <label class="form-check-label" for="emailProcess">Process updates</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="emailSecurity">
+                            <label class="form-check-label" for="emailSecurity">Security alerts</label>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h5 class="mb-3">System Notifications</h5>
+                    <div class="mb-3">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="sysAll" checked>
+                            <label class="form-check-label" for="sysAll">Show all system notifications</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="sysSound">
+                            <label class="form-check-label" for="sysSound">Play notification sounds</label>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" onclick="saveNotifications()">
+                        <i class="fas fa-save me-1"></i>Save Preferences
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Log -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="data-table">
+            <h5>Recent Activity</h5>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Details</th>
+                            <th>Date/Time</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="fas fa-sign-in-alt text-success me-2"></i>Login</td>
+                            <td>Successful login from Chrome on Windows</td>
+                            <td>Feb 15, 2026 09:30 AM</td>
+                            <td>192.168.1.xxx</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-file-alt text-primary me-2"></i>Report Generated</td>
+                            <td>Monthly Performance Report</td>
+                            <td>Feb 14, 2026 03:45 PM</td>
+                            <td>192.168.1.xxx</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-cog text-info me-2"></i>Settings Updated</td>
+                            <td>Notification preferences changed</td>
+                            <td>Feb 13, 2026 11:20 AM</td>
+                            <td>192.168.1.xxx</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function saveProfile() {
+        var firstName = document.getElementById('firstName').value;
+        var lastName = document.getElementById('lastName').value;
+        var phone = document.getElementById('phoneNumber').value;
+        var role = (document.getElementById('roleSelect') ? document.getElementById('roleSelect').value : document.getElementById('currentRole')?.value);
+
+        var payload = { FirstName: firstName, LastName: lastName, PhoneNumber: phone, Role: role };
+
+        try {
+            var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            var res = await fetch('@Url.Action("UpdateProfile", "Dashboard")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(payload)
+            });
+
+            var data = await res.json();
+            if (data && data.success) {
+                // show success toast / message
+                showToast('Successfully saved changes', 'Your profile has been updated.');
+                // Update displayed name on the left card
+                var nameEl = document.querySelector('.chart-card h4');
+                if (nameEl) {
+                    var first = data.firstName || document.getElementById('firstName').value;
+                    var last = data.lastName || document.getElementById('lastName').value;
+                    var full = (first + ' ' + (last || '')).trim();
+                    nameEl.innerText = full;
+                }
+            } else {
+                alert((data && data.message) || 'Failed to save profile');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Request failed');
+        }
+    }
+    
+    function changePassword() {
+        alert('Password changed successfully! You will need to log in again.');
+    }
+    
+    function saveNotifications() {
+        alert('Notification preferences saved!');
+    }
+
+    // Minimal toast for success feedback (matches screenshot feel)
+    function showToast(title, message) {
+        var toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-dark border-0';
+        toast.role = 'alert';
+        toast.ariaLive = 'assertive';
+        toast.ariaAtomic = 'true';
+        toast.style.position = 'fixed';
+        toast.style.right = '20px';
+        toast.style.bottom = '20px';
+        toast.style.minWidth = '220px';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong>${title}</strong><div>${message}</div>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.toast').remove()"></button>
+            </div>`;
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.remove(); }, 4000);
+    }
+</script>
+}

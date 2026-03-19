@@ -1,0 +1,582 @@
+﻿@{
+    ViewData["Title"] = "Expense Tracking";
+}
+
+<!-- Dashboard Header -->
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-1">Expense Tracking & Management</h1>
+            <p class="text-muted mb-0">Log, track, and approve organizational expenses</p>
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#logExpenseModal">
+            <i class="fas fa-plus-circle me-2"></i>Log New Expense
+        </button>
+    </div>
+</div>
+
+<!-- Expense Summary Cards -->
+<div class="row mb-5 g-3">
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card financial-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Total Expenses</p>
+                    <h3 class="mb-1">? @((ViewBag.TotalExpenses ?? 0m).ToString("N0"))</h3>
+                    <small class="text-muted">This Month</small>
+                </div>
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-receipt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card financial-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Pending Approval</p>
+                    <h3 class="mb-1">@(ViewBag.PendingExpenses ?? 0)</h3>
+                    <small class="text-muted">Awaiting Review</small>
+                </div>
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card financial-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Approved Expenses</p>
+                    <h3 class="mb-1">@(ViewBag.ApprovedExpenses ?? 0)</h3>
+                    <small class="text-muted">Authorized</small>
+                </div>
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card financial-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Rejected Expenses</p>
+                    <h3 class="mb-1">@(ViewBag.RejectedExpenses ?? 0)</h3>
+                    <small class="text-muted">Not Approved</small>
+                </div>
+                <div class="stat-icon bg-danger">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter & Search -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Department</label>
+                        <select class="form-select">
+                            <option>All Departments</option>
+                            <option>IT</option>
+                            <option>HR</option>
+                            <option>Operations</option>
+                            <option>Finance</option>
+                            <option>Marketing</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select">
+                            <option>All Status</option>
+                            <option>Pending</option>
+                            <option>Approved</option>
+                            <option>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Date Range</label>
+                        <input type="date" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Expense Table -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <h5>Expense Log</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Department</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Requested By</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var expenses = ViewBag.Expenses as List<dynamic>;
+                            if (expenses != null && expenses.Count > 0)
+                            {
+                                foreach (var expense in expenses)
+                                {
+                                    var badgeClass = expense.Status == "Approved" ? "bg-success" : 
+                                                   expense.Status == "Rejected" ? "bg-danger" : "bg-warning";
+                                    var showApproveBtn = expense.Status == "Pending";
+                                    
+                                    <tr>
+                                        <td>@((DateTime)expense.ExpenseDate).ToString("yyyy-MM-dd")</td>
+                                        <td>@expense.Department</td>
+                                        <td>@expense.Category</td>
+                                        <td>@expense.Description</td>
+                                        <td><strong>₱ @((decimal)expense.Amount).ToString("N0")</strong></td>
+                                        <td>@expense.RequestedBy</td>
+                                        <td><span class="badge @badgeClass">@expense.Status</span></td>
+                                        <td>
+                                            @if (showApproveBtn)
+                                            {
+                                                <button class="btn btn-sm btn-success" onclick="approveExpense(@expense.ExpenseId, this)">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" onclick="rejectExpense(@expense.ExpenseId, this)">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-sm btn-info" onclick="viewExpense(@expense.ExpenseId)">
+                                                    <i class="fas fa-eye"></i> View
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox me-2"></i>
+                                        No expenses found. Click "Log New Expense" to add your first expense.
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Expense by Category Chart -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>Expenses by Category</h5>
+            <div class="chart-container-sm">
+                <canvas id="expenseCategoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>Department-wise Expenses</h5>
+            <div class="chart-container-sm">
+                <canvas id="deptExpenseChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Expense Modal -->
+<div class="modal fade" id="logExpenseModal" tabindex="-1" aria-labelledby="logExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="logExpenseModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Log New Expense
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-action="LogExpense" id="logExpenseForm">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Expense Date <span class="text-danger">*</span></label>
+                            <input type="date" name="expenseDate" id="expenseDate" class="form-control form-control-lg" required />
+                            <small class="text-muted">Date when the expense occurred</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Department <span class="text-danger">*</span></label>
+                            <select name="department" id="department" class="form-select form-select-lg" required>
+                                <option value="">-- Select Department --</option>
+                                <option value="IT">IT</option>
+                                <option value="HR">HR (Human Resources)</option>
+                                <option value="Operations">Operations</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Marketing">Marketing</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Category <span class="text-danger">*</span></label>
+                            <select name="category" id="category" class="form-select form-select-lg" required>
+                                <option value="">-- Select Category --</option>
+                                <option value="Salaries">Salaries & Wages</option>
+                                <option value="Equipment">Equipment & Hardware</option>
+                                <option value="Utilities">Utilities & Bills</option>
+                                <option value="Travel">Travel & Transportation</option>
+                                <option value="Marketing">Marketing & Advertising</option>
+                                <option value="Training">Training & Development</option>
+                                <option value="Software">Software & Licenses</option>
+                                <option value="Office Supplies">Office Supplies</option>
+                                <option value="Maintenance">Maintenance & Repairs</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Amount (₱) <span class="text-danger">*</span></label>
+                            <input type="number" name="amount" id="amount" class="form-control form-control-lg" placeholder="0.00" step="0.01" min="0" required />
+                            <small class="text-muted">Amount in Philippine Pesos</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description <span class="text-danger">*</span></label>
+                        <textarea name="description" id="description" class="form-control" rows="3" placeholder="Provide details about this expense (e.g., what was purchased, why it was needed, etc.)" required></textarea>
+                        <small class="text-muted">Be specific so that reviewers understand the expense better</small>
+                    </div>
+                    
+                    <div class="alert alert-info alert-dismissible" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>How it works:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Fill in all required fields marked with <span class="text-danger">*</span></li>
+                            <li>Your expense will be submitted with "Pending" status</li>
+                            <li>Admin will review and approve/reject your expense</li>
+                            <li>You can view the status anytime in the Expense Log below</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <i class="fas fa-save me-2"></i>Submit Expense
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approveModalLabel">Approve Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <strong>Expense Details:</strong><br>
+                    <span id="modalDept">Department: -</span><br>
+                    <span id="modalAmount">Amount: -</span><br>
+                    <span id="modalCategory">Category: -</span><br>
+                    <span id="modalDescription">Description: -</span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Approval Comments</label>
+                    <textarea id="approvalNotes" class="form-control" rows="3" placeholder="Add approval notes..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="confirmApproveExpense()">Approve Expense</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Expense Modal -->
+<div class="modal fade" id="viewExpenseModal" tabindex="-1" aria-labelledby="viewExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewExpenseModalLabel">Expense Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Expense ID</dt>
+                    <dd class="col-sm-8" id="viewExpenseId">-</dd>
+
+                    <dt class="col-sm-4">Description</dt>
+                    <dd class="col-sm-8" id="viewDescription">-</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8" id="viewDept">-</dd>
+
+                    <dt class="col-sm-4">Category</dt>
+                    <dd class="col-sm-8" id="viewCategory">-</dd>
+
+                    <dt class="col-sm-4">Amount</dt>
+                    <dd class="col-sm-8" id="viewAmount">-</dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8" id="viewDate">-</dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8" id="viewStatus">-</dd>
+
+                    <dt class="col-sm-4">Requested By</dt>
+                    <dd class="col-sm-8" id="viewRequestedBy">-</dd>
+
+                    <dt class="col-sm-4">Approved By</dt>
+                    <dd class="col-sm-8" id="viewApprovedBy">-</dd>
+
+                    <dt class="col-sm-4">Approval Notes</dt>
+                    <dd class="col-sm-8" id="viewNotes">-</dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentExpenseId = null;
+
+        function getAntiForgeryToken() {
+            return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        }
+
+        function approveExpense(expenseId, btn) {
+            currentExpenseId = expenseId;
+            const row = btn.closest('tr');
+            const cells = row.cells;
+            
+            document.getElementById('modalDept').textContent = 'Department: ' + cells[1].textContent;
+            document.getElementById('modalAmount').textContent = 'Amount: ' + cells[4].textContent;
+            document.getElementById('modalCategory').textContent = 'Category: ' + cells[2].textContent;
+            document.getElementById('modalDescription').textContent = 'Description: ' + cells[3].textContent;
+            document.getElementById('approvalNotes').value = '';
+            
+            const approveModal = new bootstrap.Modal(document.getElementById('approveModal'));
+            approveModal.show();
+        }
+
+        function confirmApproveExpense() {
+            if (!currentExpenseId) return;
+            
+            const notes = document.getElementById('approvalNotes').value;
+            const token = getAntiForgeryToken();
+
+            fetch('@Url.Action("ApproveExpenseAjax", "Dashboard")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify({ expenseId: currentExpenseId, notes: notes })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', 'Expense approved successfully!');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('danger', data.message || 'Failed to approve expense');
+                }
+                bootstrap.Modal.getInstance(document.getElementById('approveModal')).hide();
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                showAlert('danger', 'Request failed');
+            });
+        }
+
+        function rejectExpense(expenseId, btn) {
+            if (!confirm('Are you sure you want to reject this expense?')) return;
+            
+            const token = getAntiForgeryToken();
+            btn.disabled = true;
+
+            fetch('@Url.Action("RejectExpenseAjax", "Dashboard")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify({ expenseId: expenseId, notes: 'Rejected by admin' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', 'Expense rejected successfully!');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('danger', data.message || 'Failed to reject expense');
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                showAlert('danger', 'Request failed');
+                btn.disabled = false;
+            });
+        }
+
+        function viewExpense(expenseId) {
+            const token = getAntiForgeryToken();
+
+            fetch('@Url.Action("ViewExpenseAjax", "Dashboard")?expenseId=' + expenseId, {
+                method: 'GET',
+                headers: {
+                    'RequestVerificationToken': token
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const exp = data.expense;
+                    document.getElementById('viewExpenseId').textContent = exp.expenseId;
+                    document.getElementById('viewDescription').textContent = exp.description;
+                    document.getElementById('viewDept').textContent = exp.department;
+                    document.getElementById('viewCategory').textContent = exp.category;
+                    document.getElementById('viewAmount').textContent = '?' + exp.amount.toLocaleString('en-IN');
+                    document.getElementById('viewDate').textContent = exp.expenseDate;
+                    const badge = exp.status === 'Approved' ? 'success' : exp.status === 'Rejected' ? 'danger' : 'warning';
+                    document.getElementById('viewStatus').innerHTML = '<span class="badge bg-' + badge + '">' + exp.status + '</span>';
+                    document.getElementById('viewRequestedBy').textContent = exp.requestedBy || 'N/A';
+                    document.getElementById('viewApprovedBy').textContent = exp.approvedBy || 'Pending';
+                    document.getElementById('viewNotes').textContent = exp.approvalNotes || 'No notes';
+                    
+                    const viewModal = new bootstrap.Modal(document.getElementById('viewExpenseModal'));
+                    viewModal.show();
+                } else {
+                    alert(data.message || 'Failed to load expense details');
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Request failed');
+            });
+        }
+
+        function showAlert(type, message) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            const alertHtml = '<div class="alert ' + alertClass + ' alert-dismissible fade show" role="alert">' +
+                '<i class="fas ' + icon + ' me-2"></i>' + message +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                '</div>';
+            
+            const container = document.querySelector('.page-header');
+            if (container) {
+                container.insertAdjacentHTML('afterend', alertHtml);
+                setTimeout(() => {
+                    const alert = document.querySelector('.alert');
+                    if (alert) alert.remove();
+                }, 3000);
+            }
+        }
+
+        // Expense Category Chart
+        const expenseCategoryCtx = document.getElementById('expenseCategoryChart').getContext('2d');
+        new Chart(expenseCategoryCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Salaries', 'Equipment', 'Utilities', 'Travel', 'Marketing', 'Training'],
+                datasets: [{
+                    data: [400000, 150000, 100000, 300000, 80000, 70000],
+                    backgroundColor: [
+                        '#1e3c72',
+                        '#2a5298',
+                        '#3498db',
+                        '#2980b9',
+                        '#27ae60',
+                        '#f39c12'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+
+        // Department Expense Chart
+        const deptExpenseCtx = document.getElementById('deptExpenseChart').getContext('2d');
+        new Chart(deptExpenseCtx, {
+            type: 'bar',
+            data: {
+                labels: ['IT', 'HR', 'Operations', 'Finance', 'Marketing'],
+                datasets: [{
+                    label: 'Monthly Expenses',
+                    data: [350000, 120000, 450000, 200000, 180000],
+                    backgroundColor: [
+                        '#1e3c72',
+                        '#2a5298',
+                        '#3498db',
+                        '#27ae60',
+                        '#f39c12'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Amount (?)'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+}

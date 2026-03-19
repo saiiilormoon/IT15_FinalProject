@@ -1,0 +1,274 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <h2>Welcome back, @ViewBag.UserName! ??</h2>
+    <p>Here's what's happening with your organization today.</p>
+</div>
+
+<!-- Stat Cards Row -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3>156</h3>
+            <p>Total Employees</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>12% from last month
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-file-invoice"></i>
+            </div>
+            <h3>48</h3>
+            <p>Reports Generated</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>8% from last week
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-tasks"></i>
+            </div>
+            <h3>23</h3>
+            <p>Pending Tasks</p>
+            <div class="stat-change negative">
+                <i class="fas fa-arrow-down me-1"></i>5% from yesterday
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-building"></i>
+            </div>
+            <h3>8</h3>
+            <p>Departments</p>
+            <div class="stat-change positive">
+                <i class="fas fa-check me-1"></i>All active
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Performance Overview</h5>
+                <select class="form-select form-select-sm" style="width: auto;">
+                    <option>This Year</option>
+                    <option>Last Year</option>
+                    <option>Last 6 Months</option>
+                </select>
+            </div>
+            <canvas id="performanceChart" height="120"></canvas>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="chart-card">
+            <h5>Department Distribution</h5>
+            <canvas id="departmentChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Activity and Table Row -->
+<div class="row g-4">
+    <div class="col-xl-4">
+        <div class="chart-card">
+            <h5>Recent Activity</h5>
+            <ul class="activity-list">
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(30,60,114,0.1); color: #1e3c72;">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>New report generated</h6>
+                        <small>Monthly Performance Report - 2 hours ago</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(39,174,96,0.1); color: #27ae60;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>New employee added</h6>
+                        <small>John Doe joined HR Department - 5 hours ago</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(241,196,15,0.1); color: #f1c40f;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Budget alert</h6>
+                        <small>Marketing budget at 85% - Yesterday</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(52,152,219,0.1); color: #3498db;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Task completed</h6>
+                        <small>Q4 Financial Review - 2 days ago</small>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-xl-8">
+        <div class="data-table">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Recent Reports</h5>
+                <a href="@Url.Action("Reports", "Dashboard")" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Report Name</th>
+                            <th>Department</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                                Monthly Sales Report
+                            </td>
+                            <td>Sales</td>
+                            <td>Jan 15, 2026</td>
+                            <td><span class="badge-status bg-success text-white">Completed</span></td>
+                            <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-excel text-success me-2"></i>
+                                Employee Attendance
+                            </td>
+                            <td>HR</td>
+                            <td>Jan 14, 2026</td>
+                            <td><span class="badge-status bg-success text-white">Completed</span></td>
+                            <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-alt text-primary me-2"></i>
+                                Budget Analysis
+                            </td>
+                            <td>Finance</td>
+                            <td>Jan 13, 2026</td>
+                            <td><span class="badge-status bg-warning text-dark">Pending</span></td>
+                            <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                                Performance Review
+                            </td>
+                            <td>Operations</td>
+                            <td>Jan 12, 2026</td>
+                            <td><span class="badge-status bg-success text-white">Completed</span></td>
+                            <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Performance Chart
+    const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+    new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [{
+                label: 'Reports Generated',
+                data: [30, 45, 35, 50, 55, 60, 48, 65, 70, 75, 80, 85],
+                borderColor: '#1e3c72',
+                backgroundColor: 'rgba(30, 60, 114, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3
+            }, {
+                label: 'Tasks Completed',
+                data: [25, 35, 40, 45, 50, 55, 52, 60, 65, 70, 72, 78],
+                borderColor: '#27ae60',
+                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Department Chart
+    const departmentCtx = document.getElementById('departmentChart').getContext('2d');
+    new Chart(departmentCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['HR', 'Finance', 'Operations', 'Sales', 'IT'],
+            datasets: [{
+                data: [25, 20, 30, 15, 10],
+                backgroundColor: [
+                    '#1e3c72',
+                    '#2a5298',
+                    '#27ae60',
+                    '#f1c40f',
+                    '#3498db'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            },
+            cutout: '60%'
+        }
+    });
+</script>
+}

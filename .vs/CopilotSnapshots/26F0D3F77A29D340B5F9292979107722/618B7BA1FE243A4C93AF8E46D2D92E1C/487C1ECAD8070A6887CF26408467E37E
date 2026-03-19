@@ -1,0 +1,106 @@
+﻿using CVM_FinalProject.Models;
+using CVM_FinalProject.Models.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Controllers
+{
+    [Authorize]
+    public class DashboardController : Controller
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<DashboardController> _logger;
+
+        public DashboardController(UserManager<ApplicationUser> userManager, ILogger<DashboardController> logger)
+        {
+            _userManager = userManager;
+            _logger = logger;
+        }
+
+        private async Task SetUserViewBagAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserEmail = user?.Email ?? "user@example.com";
+            ViewBag.UserName = user?.FirstName ?? "User";
+            ViewBag.FullName = user?.FullName ?? "User";
+            
+            // Get the user's role(s)
+            var roles = await _userManager.GetRolesAsync(user!);
+            ViewBag.UserRole = roles.FirstOrDefault() ?? "Employee";
+            ViewBag.UserRoles = roles;
+        }
+
+        public async Task<IActionResult> Index()
+        {
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> Operations()
+        {
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> Reports()
+        {
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> Performance()
+        {
+            await SetUserViewBagAsync();
+
+            // Get all users from database
+            var allUsers = await _userManager.Users.ToListAsync();
+            var userViewModels = new List<UserPerformanceViewModel>();
+
+            foreach (var user in allUsers)
+            {
+                var userRoles = await _userManager.GetRolesAsync(user);
+                userViewModels.Add(new UserPerformanceViewModel
+                {
+                    Id = user.Id,
+                    FullName = user.FullName,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email ?? "",
+                    Role = userRoles.FirstOrDefault() ?? "Employee",
+                    IsApproved = user.IsApproved,
+                    CreatedAt = user.CreatedAt
+                });
+            }
+
+            // Calculate role counts
+            var roleCounts = userViewModels
+                .GroupBy(u => u.Role)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var viewModel = new PerformancePageViewModel
+            {
+                Users = userViewModels.OrderBy(u => u.Role).ThenBy(u => u.FullName).ToList(),
+                RoleCounts = roleCounts,
+                TotalUsers = userViewModels.Count,
+                ApprovedUsers = userViewModels.Count(u => u.IsApproved),
+                PendingUsers = userViewModels.Count(u => !u.IsApproved)
+            };
+
+            return View(viewModel);
+        }
+
+        public async Task<IActionResult> Budget()
+        {
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> Settings()
+        {
+            await SetUserViewBagAsync();
+            return View();
+        }
+    }
+}

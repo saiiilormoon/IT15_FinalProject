@@ -1,0 +1,131 @@
+@model List<CVM_FinalProject.Models.ViewModels.UserManagementViewModel>
+@{
+    ViewData["Title"] = "Pending Approvals";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Pending Approvals</h2>
+            <p>Review and approve new user registrations.</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <a asp-action="Users" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Users
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (Model.Count == 0)
+{
+    <!-- Empty State -->
+    <div class="chart-card text-center py-5">
+        <div style="font-size: 4rem; color: #27ae60; margin-bottom: 20px;">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <h4 class="mb-2">All Caught Up!</h4>
+        <p class="text-muted mb-4">There are no pending user approvals at this time.</p>
+        <a asp-action="Users" class="btn btn-primary">
+            <i class="fas fa-users me-1"></i>View All Users
+        </a>
+    </div>
+}
+else
+{
+    <!-- Pending Count -->
+    <div class="alert alert-warning mb-4">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>@Model.Count user(s)</strong> waiting for approval
+    </div>
+
+    <!-- Pending Users Cards -->
+    <div class="row g-4">
+        @foreach (var user in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="chart-card h-100">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="user-avatar me-3" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                            @(string.IsNullOrEmpty(user.FirstName) ? "U" : user.FirstName[0].ToString().ToUpper())
+                        </div>
+                        <div>
+                            <h5 class="mb-0">@user.FullName</h5>
+                            <small class="text-muted">@user.Email</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-muted">Requested Role:</small>
+                            @{
+                                var roleClass = user.Role switch
+                                {
+                                    "SuperAdmin" => "bg-danger",
+                                    "Admin" => "bg-primary",
+                                    "Accountant" => "bg-success",
+                                    "HR" => "bg-info",
+                                    "Employee" => "bg-secondary",
+                                    "Auditor" => "bg-warning text-dark",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @roleClass">@user.Role</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-muted">Registered:</small>
+                            <small>@user.CreatedAt.ToString("MMM dd, yyyy hh:mm tt")</small>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Email Verified:</small>
+                            @if (user.EmailConfirmed)
+                            {
+                                <span class="text-success"><i class="fas fa-check"></i> Yes</span>
+                            }
+                            else
+                            {
+                                <span class="text-warning"><i class="fas fa-times"></i> No</span>
+                            }
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex gap-2">
+                        <form asp-action="ApproveUser" method="post" class="flex-grow-1">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@user.Id" />
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-check me-1"></i>Approve
+                            </button>
+                        </form>
+                        <form asp-action="RejectUser" method="post" class="flex-grow-1" onsubmit="return confirm('Are you sure you want to reject this user? This will delete their account.');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@user.Id" />
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-times me-1"></i>Reject
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

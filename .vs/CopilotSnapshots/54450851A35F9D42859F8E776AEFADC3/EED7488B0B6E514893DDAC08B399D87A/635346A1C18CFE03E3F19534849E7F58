@@ -1,0 +1,470 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to CVM - Centralized Organizational Management Information System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* Hero Section - Full Screen Centered */
+        .hero-section {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        /* Animated Background Elements */
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveBackground 20s linear infinite;
+        }
+        
+        @@keyframes moveBackground {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        
+        /* Floating Circles */
+        .floating-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03));
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .circle-1 { width: 300px; height: 300px; top: 10%; left: -5%; animation-delay: 0s; }
+        .circle-2 { width: 200px; height: 200px; top: 60%; right: -3%; animation-delay: 2s; }
+        .circle-3 { width: 150px; height: 150px; bottom: 10%; left: 10%; animation-delay: 4s; }
+        .circle-4 { width: 100px; height: 100px; top: 20%; right: 15%; animation-delay: 1s; }
+        
+        @@keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        
+        /* Hero Content */
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 40px 20px;
+            max-width: 900px;
+        }
+        
+        /* Logo Container */
+        .logo-container {
+            width: 150px;
+            height: 150px;
+            background: white;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            animation: pulse 3s ease-in-out infinite;
+            padding: 15px;
+        }
+        
+        @@keyframes pulse {
+            0%, 100% { box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+            50% { box-shadow: 0 25px 60px rgba(0,0,0,0.4), 0 0 0 15px rgba(255,255,255,0.1); }
+        }
+        
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        /* Welcome Text */
+        .welcome-text {
+            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            animation: fadeInDown 1s ease;
+        }
+        
+        /* Main Title */
+        .main-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1.2;
+            margin-bottom: 10px;
+            animation: fadeInUp 1s ease 0.2s both;
+        }
+        
+        .main-title span {
+            color: #7dd3fc;
+            text-shadow: 0 0 30px rgba(125, 211, 252, 0.5);
+        }
+        
+        /* Subtitle */
+        .subtitle {
+            font-size: 1.5rem;
+            color: rgba(255,255,255,0.9);
+            font-weight: 400;
+            margin-bottom: 20px;
+            animation: fadeInUp 1s ease 0.4s both;
+        }
+        
+        /* Description */
+        .description {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.7);
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.8;
+            animation: fadeInUp 1s ease 0.6s both;
+        }
+        
+        /* Buttons */
+        .btn-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 1s ease 0.8s both;
+        }
+        
+        .btn-hero {
+            padding: 15px 45px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.4s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn-primary-hero {
+            background: white;
+            color: #1e3c72;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .btn-primary-hero:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            color: #1e3c72;
+            background: #f5f7fa;
+        }
+        
+        .btn-outline-hero {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+        
+        .btn-outline-hero:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.7);
+            color: white;
+            transform: translateY(-5px);
+        }
+        
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+        
+        .scroll-indicator a {
+            color: rgba(255,255,255,0.6);
+            font-size: 1.5rem;
+            text-decoration: none;
+        }
+        
+        @@keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-10px); }
+            60% { transform: translateX(-50%) translateY(-5px); }
+        }
+        
+        /* Animations */
+        @@keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @@keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Features Section */
+        .features-section {
+            padding: 100px 0;
+            background: linear-gradient(180deg, #f5f7fa 0%, #e4ecf7 100%);
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 15px;
+        }
+        
+        .section-subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 60px;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(30, 60, 114, 0.08);
+            transition: all 0.4s ease;
+            border: 1px solid rgba(30, 60, 114, 0.08);
+            height: 100%;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(30, 60, 114, 0.15);
+        }
+        
+        .feature-icon-box {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 32px;
+            color: white;
+        }
+        
+        .icon-primary { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+        .icon-success { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
+        .icon-warning { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); }
+        .icon-info { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
+        .icon-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+        .icon-purple { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); }
+        
+        .feature-card h5 {
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 15px;
+        }
+        
+        .feature-card p {
+            color: #64748b;
+            line-height: 1.7;
+            margin: 0;
+        }
+        
+        /* Footer */
+        .footer-section {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 50px 0 30px;
+        }
+        
+        .footer-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .footer-text {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive */
+        @@media (max-width: 768px) {
+            .main-title {
+                font-size: 2.2rem;
+            }
+            .subtitle {
+                font-size: 1.2rem;
+            }
+            .logo-container {
+                width: 120px;
+                height: 120px;
+                padding: 12px;
+            }
+            .btn-hero {
+                padding: 12px 30px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <!-- Floating Circles -->
+        <div class="floating-circle circle-1"></div>
+        <div class="floating-circle circle-2"></div>
+        <div class="floating-circle circle-3"></div>
+        <div class="floating-circle circle-4"></div>
+        
+        <div class="hero-content">
+        <!-- Logo -->
+        <div class="logo-container">
+            <img src="@(Url.Content("~/images/logo_MIS.png"))" alt="cyra" />
+        </div>
+            
+        <!-- Welcome Text -->
+        <p class="welcome-text">Welcome to</p>
+            
+            <!-- Main Title -->
+            <h1 class="main-title">
+                <span>CVM</span> Centralized
+            </h1>
+            
+            <!-- Subtitle -->
+            <p class="subtitle">Organizational Management Information System</p>
+            
+            <!-- Description -->
+            <p class="description">
+                Streamline your organization's operations with our comprehensive and powerful 
+                management solution. Track performance, manage budgets, generate reports, 
+                and collaborate efficiently.
+            </p>
+            
+            <!-- Buttons -->
+            <div class="btn-container">
+                <a asp-area="Identity" asp-page="/Account/Login" class="btn-hero btn-primary-hero">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Login
+                </a>
+                <a asp-area="Identity" asp-page="/Account/Register" class="btn-hero btn-outline-hero">
+                    <i class="fas fa-user-plus"></i>
+                    Create Account
+                </a>
+            </div>
+        </div>
+        
+        <!-- Scroll Indicator -->
+        <div class="scroll-indicator">
+            <a href="#features"><i class="fas fa-chevron-down"></i></a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="text-center">
+                <h2 class="section-title">Powerful Features</h2>
+                <p class="section-subtitle">Everything you need to manage your organization efficiently</p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon-box icon-primary">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <h5>Performance Monitoring</h5>
+                        <p>Track employee and departmental performance with real-time analytics and visual dashboards.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon-box icon-success">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <h5>Budget Management</h5>
+                        <p>Monitor and control organizational budgets with detailed tracking and forecasting tools.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon-box icon-warning">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h5>Comprehensive Reports</h5>
+                        <p>Generate detailed departmental and organizational reports with just a few clicks.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon-box icon-info">
+                            <i class="fas fa-users-cog"></i>
+                        </div>
+                        <h5>User Management</h5>
+                        <p>Role-based access control for SuperAdmin, Admin, Accountant, HR, Employee, and Auditor.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon-box icon-danger">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h5>Operational Processing</h5>
+                        <p>Streamline your daily operations with efficient workflow management tools.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon-box icon-purple">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h5>Secure & Reliable</h5>
+                        <p>Enterprise-grade security to keep your organizational data safe and protected.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-section">
+        <div class="container text-center">
+            <img src="@(Url.Content("~/images/logo_MIS.png"))" alt="cyra" height="60" class="mb-3" style="filter: brightness(0) invert(1);" />
+            <div class="footer-brand">
+                CVM 
+            </div>
+            <p class="footer-text mb-3">Centralized Organizational Management Information System</p>
+            <p class="footer-text mb-0">&copy; 2026 CVM MIS. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

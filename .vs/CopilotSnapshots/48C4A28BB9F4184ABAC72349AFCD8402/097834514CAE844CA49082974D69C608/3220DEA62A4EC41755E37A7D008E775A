@@ -1,0 +1,437 @@
+﻿@{
+    ViewData["Title"] = "HR Management Center";
+    var userRole = ViewBag.UserRole as string ?? "Employee";
+    var userName = ViewBag.UserName as string ?? "User";
+}
+
+<!-- Dashboard Header -->
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-1">Welcome back, <span class="text-primary">@userName</span>!</h1>
+            <p class="text-muted mb-0">Human Resources Management Center - Employee & Talent Management</p>
+        </div>
+        <div>
+            <span class="badge bg-info px-3 py-2 fs-6">@userRole</span>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards - HR Focus (Read-Only Metrics) -->
+<div class="row mb-4 g-3">
+    <!-- Total Employees -->
+    <div class="col-lg-4 col-md-6">
+        <div class="stat-card hr-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Total Employees</p>
+                    <h3 class="mb-1">@ViewBag.TotalEmployees</h3>
+                    <small class="text-muted">Active Staff</small>
+                </div>
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Departments -->
+    <div class="col-lg-4 col-md-6">
+        <div class="stat-card hr-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Total Departments</p>
+                    <h3 class="mb-1">@ViewBag.TotalDepartments</h3>
+                    <small class="text-muted">Organizational Units</small>
+                </div>
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-building"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Avg Performance Rating -->
+    <div class="col-lg-4 col-md-6">
+        <div class="stat-card hr-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Avg Performance Rating</p>
+                    <h3 class="mb-1">@Math.Round((decimal)(ViewBag.AvgPerformanceRating ?? 0), 1) / 5.0</h3>
+                    <small class="text-muted">Overall Score</small>
+                </div>
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-star"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions - ENHANCED: Now HR Can Create/Manage Everything -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="alert alert-success mb-3">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Full HR Capabilities Unlocked!</strong> You can now create employees, departments, and record performance evaluations. All changes are tracked and auditable.
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="#" class="hr-action-btn" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
+                <i class="fas fa-user-plus"></i>
+                <span>Add Employee</span>
+            </a>
+            <a href="#" class="hr-action-btn" data-bs-toggle="modal" data-bs-target="#createDepartmentModal">
+                <i class="fas fa-building"></i>
+                <span>Create Department</span>
+            </a>
+            <a href="#" class="hr-action-btn" data-bs-toggle="modal" data-bs-target="#recordPerformanceModal">
+                <i class="fas fa-star"></i>
+                <span>Record Performance</span>
+            </a>
+            <a href="@Url.Action("Reports", "Dashboard")" class="hr-action-btn">
+                <i class="fas fa-file-pdf"></i>
+                <span>Generate Reports</span>
+            </a>
+            <a href="@Url.Action("Employees", "Dashboard")" class="hr-action-btn">
+                <i class="fas fa-users"></i>
+                <span>View Employees</span>
+            </a>
+            <a href="@Url.Action("Departments", "Dashboard")" class="hr-action-btn">
+                <i class="fas fa-sitemap"></i>
+                <span>Manage Departments</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Management & Performance -->
+<div class="row mb-4">
+    <!-- Employee Directory -->
+    <div class="col-lg-8 mb-3">
+        <div class="chart-card">
+            <h5>Employee Directory</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Department</th>
+                            <th>Position</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ViewBag.EmployeesList != null && ((List<dynamic>)ViewBag.EmployeesList).Count > 0)
+                        {
+                            foreach (var emp in ViewBag.EmployeesList)
+                            {
+                                <tr>
+                                    <td><strong>@emp.EmployeeName</strong></td>
+                                    <td>@emp.DepartmentName</td>
+                                    <td>@emp.Position</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> Active
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No employees assigned yet</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Summary -->
+    <div class="col-lg-4 mb-3">
+        <div class="chart-card">
+            <h5>Department Summary</h5>
+            <div class="p-3">
+                @if (ViewBag.DepartmentSummary != null)
+                {
+                    int index = 0;
+                    foreach (var dept in ViewBag.DepartmentSummary)
+                    {
+                        index++;
+                        var deptPercent = ((int)dept.EmployeeCount * 100) / (int)ViewBag.TotalEmployees;
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">@dept.DepartmentName</span>
+                                <strong>@dept.EmployeeCount</strong>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" style="width: @deptPercent%"></div>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center text-muted">No department data available</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Monitoring & HR Metrics -->
+<div class="row mb-4">
+    <!-- Top Performers -->
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>Top Performers</h5>
+            <div class="p-3">
+                <ul class="activity-list">
+                    @if (ViewBag.TopPerformers != null && ((List<dynamic>)ViewBag.TopPerformers).Count > 0)
+                    {
+                        foreach (var perf in ViewBag.TopPerformers)
+                        {
+                            <li class="activity-item">
+                                <div class="activity-icon bg-success" style="background: linear-gradient(135deg, #27ae60, #16a085); color: white;">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                                <div class="activity-content flex-grow-1">
+                                    <h6>@perf.EmployeeName</h6>
+                                    <small>Rating: @perf.PerformanceRating / 5.0</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success">@perf.PerformanceRating.ToString("F1")</span>
+                                </div>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="text-center text-muted py-3">No performance data available</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Distribution -->
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>Performance Distribution</h5>
+            <div class="chart-container-sm">
+                <canvas id="performanceDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Records & Trends -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <h5>Performance Records (Last 10)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Evaluation Period</th>
+                            <th>Rating</th>
+                            <th>Tasks Completed</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ViewBag.PerformanceRecords != null && ((List<dynamic>)ViewBag.PerformanceRecords).Count > 0)
+                        {
+                            foreach (var record in ViewBag.PerformanceRecords)
+                            {
+                                var ratingColor = record.PerformanceRating >= 4 ? "success" : record.PerformanceRating >= 3 ? "warning" : "danger";
+                                <tr>
+                                    <td><strong>@record.EmployeeName</strong></td>
+                                    <td>@record.EvaluationPeriod</td>
+                                    <td>
+                                        <span class="badge bg-@ratingColor">@record.PerformanceRating / 5.0</span>
+                                    </td>
+                                    <td>@record.TasksCompleted</td>
+                                    <td>
+                                        <span class="badge bg-info">Recorded</span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No performance records yet</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HR Metrics & Insights -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>Employee Headcount Trend</h5>
+            <div class="chart-container-sm">
+                <canvas id="headcountTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>Department Performance</h5>
+            <div class="chart-container-sm">
+                <canvas id="deptPerformanceChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts & Recommendations -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <h5>HR Alerts & Recommendations</h5>
+            <div class="p-3">
+                <div class="alert alert-info d-flex align-items-center mb-2" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <div>
+                        <strong>Action Required:</strong> Review pending performance evaluations and record any outstanding reviews.
+                    </div>
+                </div>
+                <div class="alert alert-success d-flex align-items-center mb-2" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <div>
+                        <strong>Performance Insight:</strong> Average team performance is @Math.Round((decimal)(ViewBag.AvgPerformanceRating ?? 0), 1) / 5.0 - Keep up the good work!
+                    </div>
+                </div>
+                <div class="alert alert-warning d-flex align-items-center mb-0" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <div>
+                        <strong>Organizational Insight:</strong> You have @ViewBag.TotalEmployees employees across @ViewBag.TotalDepartments departments.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Performance Distribution Chart
+        const perfCtx = document.getElementById('performanceDistributionChart');
+        if (perfCtx) {
+            new Chart(perfCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Excellent (4.5-5.0)', 'Good (3.5-4.4)', 'Average (2.5-3.4)', 'Below Average (<2.5)'],
+                    datasets: [{
+                        data: [@(ViewBag.ExcellentCount ?? 0), @(ViewBag.GoodCount ?? 0), @(ViewBag.AverageCount ?? 0), @(ViewBag.BelowAverageCount ?? 0)],
+                        backgroundColor: [
+                            '#27ae60',
+                            '#3498db',
+                            '#f39c12',
+                            '#e74c3c'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+
+        // Headcount Trend Chart
+        const headcountCtx = document.getElementById('headcountTrendChart');
+        if (headcountCtx) {
+            new Chart(headcountCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Total Employees',
+                        data: [@(ViewBag.TotalEmployees ?? 0), @(ViewBag.TotalEmployees ?? 0), @(ViewBag.TotalEmployees ?? 0), @(ViewBag.TotalEmployees ?? 0), @(ViewBag.TotalEmployees ?? 0), @(ViewBag.TotalEmployees ?? 0)],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Employees'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Department Performance Chart
+        const deptPerfCtx = document.getElementById('deptPerformanceChart');
+        if (deptPerfCtx) {
+            new Chart(deptPerfCtx, {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(ViewBag.DepartmentLabels ?? "[]"),
+                    datasets: [{
+                        label: 'Avg Performance Rating',
+                        data: @Html.Raw(ViewBag.DepartmentPerformanceData ?? "[]"),
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            title: {
+                                display: true,
+                                text: 'Rating'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+}

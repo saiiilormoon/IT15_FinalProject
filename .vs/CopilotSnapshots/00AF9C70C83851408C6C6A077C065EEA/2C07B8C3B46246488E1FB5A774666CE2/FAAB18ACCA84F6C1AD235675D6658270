@@ -1,0 +1,41 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace CVM_FinalProject.Models
+{
+    /// <summary>
+    /// Represents a report generated in the system
+    /// </summary>
+    public class Report
+    {
+        [Key]
+        [Column("Report_ID")]
+        public int ReportId { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string ReportType { get; set; } = string.Empty;
+
+        [Column("generated_by")]
+        [ForeignKey("User")]
+        public string? GeneratedBy { get; set; }
+
+        [Column("generated_at")]
+        public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Gets the GeneratedAt time converted to local timezone
+        /// </summary>
+        [NotMapped]
+        public DateTime GeneratedAtLocal
+        {
+            get => TimeZoneInfo.ConvertTimeFromUtc(GeneratedAt, TimeZoneInfo.Local);
+        }
+
+        [Column("report_data")]
+        public string? ReportData { get; set; }
+
+        // Navigation properties
+        public virtual ApplicationUser? User { get; set; }
+    }
+}

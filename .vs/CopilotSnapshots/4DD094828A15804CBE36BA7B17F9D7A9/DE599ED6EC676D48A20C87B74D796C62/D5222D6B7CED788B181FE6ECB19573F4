@@ -1,0 +1,353 @@
+﻿@{
+    ViewData["Title"] = "Approved & Completed Processes";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Approved & Completed Processes</h2>
+            <p>View all approved and completed operational processes.</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <a asp-action="Operations" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Operations
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    @{
+        var allProcesses = (ViewBag.OperationalProcesses as List<CVM_FinalProject.Models.OperationalProcess>) ?? new List<CVM_FinalProject.Models.OperationalProcess>();
+        var approvedCount = allProcesses.Count(p => p.Status == CVM_FinalProject.Models.ProcessStatus.Approved);
+        var completedCount = allProcesses.Count(p => p.Status == CVM_FinalProject.Models.ProcessStatus.Completed);
+        var totalCount = approvedCount + completedCount;
+        var completionRate = totalCount > 0 ? ((completedCount * 100) / totalCount) : 0;
+    }
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3>@approvedCount</h3>
+            <p>Approved Processes</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-secondary">
+                <i class="fas fa-check-double"></i>
+            </div>
+            <h3>@completedCount</h3>
+            <p>Completed Processes</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <h3>@totalCount</h3>
+            <p>Total Processed</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-percent"></i>
+            </div>
+            <h3>@completionRate%</h3>
+            <p>Completion Rate</p>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="chart-card mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">Search</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search processes..." id="searchInput" onkeyup="filterTable()">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">Department</label>
+            <select class="form-select" id="deptFilter" onchange="filterTable()">
+                <option value="">All Departments</option>
+                <option value="Finance">Finance</option>
+                <option value="HR">Human Resources</option>
+                <option value="Operations">Operations</option>
+                <option value="Sales">Sales</option>
+                <option value="IT">IT</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">Status</label>
+            <select class="form-select" id="statusFilter" onchange="filterTable()">
+                <option value="">All Status</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="COMPLETED">COMPLETED</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-semibold">&nbsp;</label>
+            <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                <i class="fas fa-redo me-1"></i>Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Processes Table -->
+<div class="data-table">
+    @Html.AntiForgeryToken()
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Approved & Completed Processes</h5>
+        <span class="badge bg-primary" id="recordCount">Showing @(ViewBag.OperationalProcesses?.Count ?? 0) records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0" id="processTable">
+            <thead>
+                <tr>
+                    <th>Process ID</th>
+                    <th>Process Name</th>
+                    <th>Department</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (ViewBag.OperationalProcesses != null && ViewBag.OperationalProcesses.Count > 0)
+                {
+                    @foreach (var process in ViewBag.OperationalProcesses)
+                    {
+                        string statusClass = process.Status == CVM_FinalProject.Models.ProcessStatus.Approved ? "bg-success" : "bg-secondary";
+                        string statusText = process.Status == CVM_FinalProject.Models.ProcessStatus.Approved ? "APPROVED" : "COMPLETED";
+                        
+                        <tr data-process-id="@process.ProcessId" data-status="@process.Status">
+                            <td><span class="fw-semibold text-primary">#@process.ProcessId</span></td>
+                            <td>@process.Name</td>
+                            <td>@process.Department</td>
+                            <td>@process.AssignedTo</td>
+                            <td><span class="badge @statusClass">@statusText</span></td>
+                            <td>@(process.Status == CVM_FinalProject.Models.ProcessStatus.Approved ? process.ApprovedAt?.ToString("MMM dd, yyyy") : process.CompletedAt?.ToString("MMM dd, yyyy"))</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" title="View" onclick="viewProcess('@process.ProcessId', '@process.Name', '@process.Department', '@process.AssignedTo', '@statusText', '@(process.Status == CVM_FinalProject.Models.ProcessStatus.Approved ? process.ApprovedAt?.ToString("MMM dd, yyyy") : process.CompletedAt?.ToString("MMM dd, yyyy"))')"><i class="fas fa-eye"></i></button>
+                                    
+                                    @if (process.Status == CVM_FinalProject.Models.ProcessStatus.Approved)
+                                    {
+                                        <button class="btn btn-outline-success" title="Mark Complete" onclick="completeProcess('@process.ProcessId', this)"><i class="fas fa-check-double"></i></button>
+                                    }
+                                    
+                                    <button class="btn btn-outline-info" title="Report" onclick="generateProcessReport('@process.ProcessId')"><i class="fas fa-file-alt"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No approved or completed processes found</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-end mb-0">
+            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+            <li class="page-item"><a class="page-link" href="#">2</a></li>
+            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+        </ul>
+    </nav>
+</div>
+
+<!-- View Process Modal -->
+<div class="modal fade" id="viewProcessModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-eye me-2 text-primary"></i>Process Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Process ID</dt>
+                    <dd class="col-sm-8" id="viewProcessId"></dd>
+
+                    <dt class="col-sm-4">Process Name</dt>
+                    <dd class="col-sm-8" id="viewProcessName"></dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8" id="viewDepartment"></dd>
+
+                    <dt class="col-sm-4">Assigned To</dt>
+                    <dd class="col-sm-8" id="viewAssignedTo"></dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8" id="viewStatus"></dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8" id="viewDate"></dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Initialize: Update record count
+    function initializeApprovedProcesses() {
+        updateRecordCount();
+    }
+
+    // Update record count after filtering
+    function updateRecordCount() {
+        var rows = document.querySelectorAll('#processTable tbody tr');
+        var visibleCount = 0;
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                visibleCount++;
+            }
+        });
+        document.getElementById('recordCount').textContent = `Showing ${visibleCount} records`;
+    }
+
+    // Helper to get antiforgery token for AJAX
+    function getAntiForgeryToken() {
+        var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    // View Process Modal - displays process details
+    function viewProcess(id, name, dept, assignedTo, status, date) {
+        document.getElementById('viewProcessId').innerText = '#' + id;
+        document.getElementById('viewProcessName').innerText = name;
+        document.getElementById('viewDepartment').innerText = dept;
+        document.getElementById('viewAssignedTo').innerText = assignedTo;
+        document.getElementById('viewStatus').innerText = status;
+        document.getElementById('viewDate').innerText = date;
+        
+        var modal = new bootstrap.Modal(document.getElementById('viewProcessModal'));
+        modal.show();
+    }
+
+    // Generate process report
+    function generateProcessReport(id) {
+        alert('Generating report for process: ' + id);
+    }
+
+    // Complete/Mark process as done
+    function completeProcess(id, btn) {
+        if (!confirm('Mark process ' + id + ' as completed?')) return;
+        
+        var token = getAntiForgeryToken();
+        btn.disabled = true;
+
+        // Get the row
+        var row = document.querySelector('#processTable tbody tr[data-process-id="' + id + '"]');
+
+        // Send to server
+        fetch('@Url.Action("CompleteProcessAjax", "Dashboard")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify({ processId: id })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                showAlert('success', 'Process #' + id + ' marked as completed!');
+                
+                // Wait a moment then reload the page to see updated data from database
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert(data.message || 'Failed to complete process');
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Request failed');
+            btn.disabled = false;
+        });
+    }
+
+    // Show alert message
+    function showAlert(type, message) {
+        var alertHtml = '<div class="alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show" role="alert">' +
+            '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle') + ' me-2"></i>' + message +
+            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+            '</div>';
+        
+        var alertContainer = document.querySelector('.chart-card');
+        if (alertContainer) {
+            alertContainer.insertAdjacentHTML('beforebegin', alertHtml);
+            setTimeout(() => {
+                var alert = document.querySelector('.alert');
+                if (alert) alert.remove();
+            }, 3000);
+        }
+    }
+
+    function filterTable() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const dept = document.getElementById('deptFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const rows = document.querySelectorAll('#processTable tbody tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const rowDept = row.cells[2].textContent;
+            const rowStatus = row.cells[4].textContent.trim();
+            
+            const matchSearch = text.includes(search);
+            const matchDept = !dept || rowDept.includes(dept);
+            const matchStatus = !status || rowStatus.includes(status);
+            
+            if (matchSearch && matchDept && matchStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('recordCount').textContent = `Showing ${visibleCount} records`;
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('deptFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        filterTable();
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeApprovedProcesses();
+    });
+</script>
+}

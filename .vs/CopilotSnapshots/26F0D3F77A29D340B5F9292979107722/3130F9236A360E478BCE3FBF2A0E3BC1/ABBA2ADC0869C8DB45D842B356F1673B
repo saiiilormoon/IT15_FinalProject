@@ -1,0 +1,224 @@
+﻿@{
+    ViewData["Title"] = "Performance Monitoring";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <h2>Performance Monitoring</h2>
+    <p>Track employee, department, and organizational performance.</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <h3>92%</h3>
+            <p>Overall Performance</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>5% from last quarter
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-bullseye"></i>
+            </div>
+            <h3>87%</h3>
+            <p>Goals Achieved</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>12% improvement
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-user-clock"></i>
+            </div>
+            <h3>95%</h3>
+            <p>Attendance Rate</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>2% from last month
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-star"></i>
+            </div>
+            <h3>4.5</h3>
+            <p>Avg. Rating</p>
+            <div class="stat-change positive">
+                <i class="fas fa-check me-1"></i>Above target
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="chart-card">
+            <h5>Performance Trends</h5>
+            <canvas id="performanceTrendChart" height="120"></canvas>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="chart-card">
+            <h5>Department Rankings</h5>
+            <canvas id="departmentRankingChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="data-table">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Top Performers</h5>
+        <button class="btn btn-outline-primary btn-sm">View All Employees</button>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Performance Score</th>
+                    <th>Tasks Completed</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3" style="width:35px;height:35px;font-size:0.8rem;">JS</div>
+                            John Smith
+                        </div>
+                    </td>
+                    <td>Operations</td>
+                    <td>
+                        <div class="progress" style="height: 8px; width: 100px;">
+                            <div class="progress-bar bg-success" style="width: 98%"></div>
+                        </div>
+                        <small class="text-muted">98%</small>
+                    </td>
+                    <td>156</td>
+                    <td><i class="fas fa-star text-warning"></i> 4.9</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3" style="width:35px;height:35px;font-size:0.8rem;">JD</div>
+                            Jane Doe
+                        </div>
+                    </td>
+                    <td>HR</td>
+                    <td>
+                        <div class="progress" style="height: 8px; width: 100px;">
+                            <div class="progress-bar bg-success" style="width: 95%"></div>
+                        </div>
+                        <small class="text-muted">95%</small>
+                    </td>
+                    <td>142</td>
+                    <td><i class="fas fa-star text-warning"></i> 4.8</td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3" style="width:35px;height:35px;font-size:0.8rem;">MJ</div>
+                            Mike Johnson
+                        </div>
+                    </td>
+                    <td>Finance</td>
+                    <td>
+                        <div class="progress" style="height: 8px; width: 100px;">
+                            <div class="progress-bar bg-success" style="width: 93%"></div>
+                        </div>
+                        <small class="text-muted">93%</small>
+                    </td>
+                    <td>138</td>
+                    <td><i class="fas fa-star text-warning"></i> 4.7</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Performance Trend Chart
+    const trendCtx = document.getElementById('performanceTrendChart').getContext('2d');
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Employee Performance',
+                data: [85, 88, 87, 90, 91, 92],
+                borderColor: '#1e3c72',
+                backgroundColor: 'rgba(30, 60, 114, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3
+            }, {
+                label: 'Department Average',
+                data: [80, 82, 85, 86, 88, 89],
+                borderColor: '#27ae60',
+                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 70,
+                    max: 100
+                }
+            }
+        }
+    });
+
+    // Department Ranking Chart
+    const rankingCtx = document.getElementById('departmentRankingChart').getContext('2d');
+    new Chart(rankingCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Operations', 'HR', 'Finance', 'Sales', 'IT'],
+            datasets: [{
+                label: 'Performance Score',
+                data: [95, 92, 90, 88, 85],
+                backgroundColor: [
+                    '#1e3c72',
+                    '#2a5298',
+                    '#27ae60',
+                    '#f1c40f',
+                    '#3498db'
+                ],
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+</script>
+}

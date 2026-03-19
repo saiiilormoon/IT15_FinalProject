@@ -1,0 +1,41 @@
+﻿using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
+
+namespace CVM_FinalProject.Models
+{
+    public class ApplicationUser : IdentityUser
+    {
+        [Required]
+        [StringLength(50)]
+        [Display(Name = "First Name")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        [Display(Name = "Last Name")]
+        public string LastName { get; set; } = string.Empty;
+
+        [Display(Name = "Full Name")]
+        public string FullName => $"{FirstName} {LastName}";
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public bool IsApproved { get; set; } = false;
+
+        /// <summary>
+        /// Indicates if the user account is archived (deactivated).
+        /// Archived users cannot login.
+        /// </summary>
+        public bool IsArchived { get; set; } = false;
+
+        /// <summary>
+        /// Date when the account was archived.
+        /// </summary>
+        public DateTime? ArchivedAt { get; set; }
+
+        /// <summary>
+        /// The user ID of who archived this account.
+        /// </summary>
+        public string? ArchivedBy { get; set; }
+    }
+}

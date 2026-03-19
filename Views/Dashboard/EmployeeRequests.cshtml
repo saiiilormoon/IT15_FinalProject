@@ -1,0 +1,541 @@
+@{
+    ViewData["Title"] = "Employee Requests";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+    bool isAdminView = (bool)(ViewBag.IsAdminView ?? false);
+    bool isSuperAdminView = (bool)(ViewBag.IsSuperAdminView ?? false);
+    bool isHRView = (bool)(ViewBag.IsHRView ?? false);
+    bool isAuditorView = (bool)(ViewBag.IsAuditorView ?? false);
+    bool isAccountantView = (bool)(ViewBag.IsAccountantView ?? false);
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>
+                @if (isAdminView)
+                {
+                    <text>Employee Requests Management</text>
+                }
+                else if (isHRView)
+                {
+                    <text>Employee Requests - HR Review</text>
+                }
+                else if (isAuditorView)
+                {
+                    <text>Employee Requests - Compliance View</text>
+                }
+                else if (isAccountantView)
+                {
+                    <text>Employee Requests - Financial Review</text>
+                }
+                else
+                {
+                    <text>My Requests</text>
+                }
+            </h2>
+            <p>
+                @if (isAdminView)
+                {
+                    <text>Review and manage all employee requests.</text>
+                }
+                else if (isHRView)
+                {
+                    <text>View and recommend action on employee requests.</text>
+                }
+                else if (isAuditorView)
+                {
+                    <text>Audit and verify employee request compliance.</text>
+                }
+                else if (isAccountantView)
+                {
+                    <text>Review financial impact of employee requests.</text>
+                }
+                else
+                {
+                    <text>Submit and track your requests.</text>
+                }
+            </p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            @if (!isAdminView && !isHRView && !isAuditorView && !isAccountantView)
+            {
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRequestModal">
+                    <i class="fas fa-plus me-2"></i>New Request
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    @{
+        var allRequests = (ViewBag.EmployeeRequests as List<CVM_FinalProject.Models.EmployeeRequest>) ?? new List<CVM_FinalProject.Models.EmployeeRequest>();
+        var pendingCount = ViewBag.PendingRequests ?? 0;
+        var approvedCount = ViewBag.ApprovedRequests ?? 0;
+        var completedCount = ViewBag.CompletedRequests ?? 0;
+        var totalCount = ViewBag.TotalRequests ?? 0;
+    }
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h3>@pendingCount</h3>
+            <p>Pending</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3>@approvedCount</h3>
+            <p>Approved</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-secondary">
+                <i class="fas fa-check-double"></i>
+            </div>
+            <h3>@completedCount</h3>
+            <p>Completed</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <h3>@totalCount</h3>
+            <p>Total Requests</p>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="chart-card mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">Search</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search reports, employees..." id="searchInput" onkeyup="filterTable()">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">Department</label>
+            <select class="form-select" id="deptFilter" onchange="filterTable()">
+                <option value="">All Departments</option>
+                <option value="Finance">Finance</option>
+                <option value="HR">Human Resources</option>
+                <option value="Operations">Operations</option>
+                <option value="Sales">Sales</option>
+                <option value="IT">IT</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">Status</label>
+            <select class="form-select" id="statusFilter" onchange="filterTable()">
+                <option value="">All Status</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="COMPLETED">Completed</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-semibold">&nbsp;</label>
+            <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                <i class="fas fa-redo me-1"></i>Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Requests Table -->
+<div class="data-table">
+    @Html.AntiForgeryToken()
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">
+            @if (isAdminView)
+            {
+                <text>All Employee Requests</text>
+            }
+            else if (isHRView)
+            {
+                <text>Employee Requests to Review</text>
+            }
+            else if (isAuditorView)
+            {
+                <text>Employee Requests - Audit</text>
+            }
+            else if (isAccountantView)
+            {
+                <text>Employee Requests - Financial Review</text>
+            }
+            else
+            {
+                <text>My Submitted Requests</text>
+            }
+        </h5>
+        <span class="badge bg-primary" id="recordCount">Showing @(allRequests.Count) records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0" id="requestTable">
+            <thead>
+                <tr>
+                    <th>Request ID</th>
+                    <th>Title</th>
+                    @if (isAdminView || isHRView || isAuditorView || isAccountantView)
+                    {
+                        <th>Submitted By</th>
+                    }
+                    <th>Department</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (allRequests != null && allRequests.Count > 0)
+                {
+                    @foreach (var request in allRequests)
+                    {
+                        string statusClass = request.Status == CVM_FinalProject.Models.RequestStatus.Pending ? "bg-warning text-dark" :
+                                           (request.Status == CVM_FinalProject.Models.RequestStatus.Approved ? "bg-success" : "bg-secondary");
+                        string statusText = request.Status == CVM_FinalProject.Models.RequestStatus.Pending ? "PENDING" :
+                                          (request.Status == CVM_FinalProject.Models.RequestStatus.Approved ? "APPROVED" : "COMPLETED");
+
+                        <tr data-request-id="@request.RequestId" data-status="@request.Status">
+                            <td><span class="fw-semibold text-primary">#@request.RequestId</span></td>
+                            <td>@request.Title</td>
+                            @if (isAdminView || isHRView || isAuditorView || isAccountantView)
+                            {
+                                <td>@request.SubmittedByName</td>
+                            }
+                            <td>@request.Department</td>
+                            <td><small class="badge bg-light text-dark">@request.RequestType</small></td>
+                            <td><span class="badge @statusClass">@statusText</span></td>
+                            <td>@request.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" title="View" onclick="viewRequest('@request.RequestId', '@request.Title', '@request.Department', '@request.RequestType', '@statusText', '@request.CreatedAt.ToString("MMM dd, yyyy")', '@request.SubmittedByName')"><i class="fas fa-eye"></i></button>
+                                    
+                                    @if (isSuperAdminView && request.Status == CVM_FinalProject.Models.RequestStatus.Pending)
+                                    {
+                                        <button class="btn btn-outline-success" title="Approve" onclick="approveRequest('@request.RequestId', this)"><i class="fas fa-check"></i></button>
+                                    }
+                                    
+                                    @if (isSuperAdminView && request.Status == CVM_FinalProject.Models.RequestStatus.Approved)
+                                    {
+                                        <button class="btn btn-outline-info" title="Mark Complete" onclick="completeRequest('@request.RequestId', this)"><i class="fas fa-check-double"></i></button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="@(isAdminView || isHRView || isAuditorView || isAccountantView ? 8 : 7)" class="text-center text-muted py-4">
+                            <i class="fas fa-inbox me-2"></i>
+                            @if (isAdminView)
+                            {
+                                <text>No employee requests yet</text>
+                            }
+                            else if (isHRView)
+                            {
+                                <text>No requests to review</text>
+                            }
+                            else if (isAuditorView)
+                            {
+                                <text>No requests for audit</text>
+                            }
+                            else if (isAccountantView)
+                            {
+                                <text>No requests for financial review</text>
+                            }
+                            else
+                            {
+                                <text>You haven't submitted any requests yet</text>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- View Request Modal -->
+<div class="modal fade" id="viewRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Request Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Request ID</dt>
+                    <dd class="col-sm-8" id="viewRequestId"></dd>
+
+                    <dt class="col-sm-4">Title</dt>
+                    <dd class="col-sm-8" id="viewRequestTitle"></dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8" id="viewDepartment"></dd>
+
+                    <dt class="col-sm-4">Type</dt>
+                    <dd class="col-sm-8" id="viewRequestType"></dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8" id="viewStatus"></dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8" id="viewDate"></dd>
+
+                    <dt class="col-sm-4">Submitted By</dt>
+                    <dd class="col-sm-8" id="viewSubmittedBy"></dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Request Modal (Employee Only) -->
+<div class="modal fade" id="newRequestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2 text-primary"></i>Submit New Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="newRequestForm" method="post" asp-action="CreateEmployeeRequest" asp-controller="Dashboard">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Request Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="requestTitle" id="requestTitle" placeholder="e.g., Laptop Request, Leave Request" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Department <span class="text-danger">*</span></label>
+                        <select class="form-select" name="department" id="department" required>
+                            <option value="">Select Department</option>
+                            <option value="Finance">Finance</option>
+                            <option value="HR">Human Resources</option>
+                            <option value="Operations">Operations</option>
+                            <option value="Sales">Sales</option>
+                            <option value="IT">IT</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Request Type <span class="text-danger">*</span></label>
+                        <select class="form-select" name="requestType" id="requestType" required>
+                            <option value="">Select Type</option>
+                            <option value="Leave">Leave</option>
+                            <option value="Equipment">Equipment</option>
+                            <option value="Support">Support</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" id="description" rows="4" placeholder="Provide details about your request (optional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Update record count after filtering
+    function updateRecordCount() {
+        var rows = document.querySelectorAll('#requestTable tbody tr');
+        var visibleCount = 0;
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                visibleCount++;
+            }
+        });
+        document.getElementById('recordCount').textContent = `Showing ${visibleCount} records`;
+    }
+
+    // Helper to get antiforgery token for AJAX
+    function getAntiForgeryToken() {
+        var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    // View Request Modal
+    function viewRequest(id, title, dept, type, status, date, submittedBy) {
+        document.getElementById('viewRequestId').innerText = '#' + id;
+        document.getElementById('viewRequestTitle').innerText = title;
+        document.getElementById('viewDepartment').innerText = dept;
+        document.getElementById('viewRequestType').innerText = type;
+        document.getElementById('viewStatus').innerHTML = getStatusBadge(status);
+        document.getElementById('viewDate').innerText = date;
+        document.getElementById('viewSubmittedBy').innerText = submittedBy;
+        
+        var modal = new bootstrap.Modal(document.getElementById('viewRequestModal'));
+        modal.show();
+    }
+
+    // Get status badge HTML
+    function getStatusBadge(status) {
+        const badgeClass = {
+            'APPROVED': 'bg-success',
+            'Approved': 'bg-success',
+            'PENDING': 'bg-warning text-dark',
+            'Pending': 'bg-warning text-dark',
+            'COMPLETED': 'bg-secondary',
+            'Completed': 'bg-secondary'
+        };
+        const cssClass = badgeClass[status] || 'bg-secondary';
+        return '<span class="badge ' + cssClass + '">' + status + '</span>';
+    }
+
+    // Approve request (SuperAdmin only)
+    function approveRequest(id, btn) {
+        if (!confirm('Are you sure you want to APPROVE this request?')) return;
+        
+        var token = getAntiForgeryToken();
+        btn.disabled = true;
+
+        // Send to server
+        fetch('@Url.Action("ApproveEmployeeRequestAjax", "Dashboard")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify({ requestId: id })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', 'Request #' + id + ' approved successfully!');
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert(data.message || 'Failed to approve request');
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Request failed');
+            btn.disabled = false;
+        });
+    }
+
+    // Complete request (SuperAdmin only)
+    function completeRequest(id, btn) {
+        if (!confirm('Mark request ' + id + ' as COMPLETED?')) return;
+        
+        var token = getAntiForgeryToken();
+        btn.disabled = true;
+
+        // Send to server
+        fetch('@Url.Action("CompleteEmployeeRequestAjax", "Dashboard")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify({ requestId: id })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', 'Request #' + id + ' marked as completed!');
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert(data.message || 'Failed to complete request');
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Request failed');
+            btn.disabled = false;
+        });
+    }
+
+    // Show alert message
+    function showAlert(type, message) {
+        var alertHtml = '<div class="alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show" role="alert">' +
+            '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle') + ' me-2"></i>' + message +
+            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+            '</div>';
+        
+        var alertContainer = document.querySelector('.chart-card');
+        if (alertContainer) {
+            alertContainer.insertAdjacentHTML('beforebegin', alertHtml);
+            setTimeout(() => {
+                var alert = document.querySelector('.alert');
+                if (alert) alert.remove();
+            }, 3000);
+        }
+    }
+
+    // Filter table
+    function filterTable() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const dept = document.getElementById('deptFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const rows = document.querySelectorAll('#requestTable tbody tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const rowDept = row.cells[document.querySelector('#requestTable tbody tr td:first-child') ? 3 : 2].textContent;
+            const rowStatus = row.cells[5].textContent.trim();
+            
+            const matchSearch = text.includes(search);
+            const matchDept = !dept || rowDept.includes(dept);
+            const matchStatus = !status || rowStatus.includes(status);
+            
+            if (matchSearch && matchDept && matchStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('recordCount').textContent = `Showing ${visibleCount} records`;
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('deptFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        filterTable();
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateRecordCount();
+    });
+</script>
+}
+

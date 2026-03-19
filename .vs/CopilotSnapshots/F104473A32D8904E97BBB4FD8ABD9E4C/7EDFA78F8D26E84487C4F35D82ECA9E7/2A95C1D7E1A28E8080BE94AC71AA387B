@@ -1,0 +1,94 @@
+﻿using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using CVM_FinalProject.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(connectionString, sqlOptions =>
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorNumbersToAdd: null)));
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+.AddRoles<IdentityRole>()
+.AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddControllersWithViews();
+
+// Add Role-Based Authorization Policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("SuperAdmin", "Admin"));
+    options.AddPolicy("FinancialAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant"));
+    options.AddPolicy("HRAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "HR"));
+    options.AddPolicy("AuditAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "Auditor"));
+    options.AddPolicy("EmployeeAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant", "HR", "Auditor", "Employee"));
+    options.AddPolicy("ReadOnly", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant", "HR", "Auditor", "Employee"));
+    options.AddPolicy("CanApproveRequests", policy => policy.RequireRole("SuperAdmin", "Admin"));
+    options.AddPolicy("CanManageUsers", policy => policy.RequireRole("SuperAdmin", "Admin"));
+    options.AddPolicy("CanManageBudgets", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant"));
+    options.AddPolicy("CanManageHR", policy => policy.RequireRole("SuperAdmin", "Admin", "HR"));
+});
+
+// Register application services
+builder.Services.AddScoped<DepartmentService>();
+builder.Services.AddScoped<EmployeeService>();
+builder.Services.AddScoped<PerformanceService>();
+builder.Services.AddScoped<BudgetService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<ReportingService>();
+builder.Services.AddScoped<ReportExportService>();
+builder.Services.AddScoped<AccountantService>();
+builder.Services.AddScoped<PdfGeneratorService>();
+builder.Services.AddHttpContextAccessor();
+
+var app = builder.Build();
+
+// Initialize roles and seed data with error handling
+try
+{
+    await DbInitializer.InitializeRolesAsync(app.Services);
+    await DbInitializer.SeedSuperAdminAsync(app.Services, builder.Configuration);
+    await DbInitializer.SeedDefaultUsersAsync(app.Services);
+    await DbInitializer.ApproveExistingUsersAsync(app.Services);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
+    logger.LogError(ex, "An error occurred while initializing the database. Run 'Update-Database' to apply migrations.");
+}
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseMigrationsEndPoint();
+}
+else
+{
+    app.UseExceptionHandler("/Home/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapRazorPages();
+
+app.Run();
+

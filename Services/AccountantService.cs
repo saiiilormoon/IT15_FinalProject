@@ -1,0 +1,154 @@
+using CVM_FinalProject.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Services
+{
+    public class AccountantService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<AccountantService> _logger;
+
+        public AccountantService(ApplicationDbContext context, ILogger<AccountantService> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Get KPI data for sidebar display
+        /// </summary>
+        public async Task<AccountantKPIDto> GetAccountantKPIAsync()
+        {
+            try
+            {
+                var kpi = new AccountantKPIDto();
+
+                // Budget Utilization Rate
+                var totalBudgetAllocated = await _context.Budgets
+                    .SumAsync(b => (decimal?)b.AllocatedAmount) ?? 0;
+                var totalBudgetUsed = await _context.Budgets
+                    .SumAsync(b => (decimal?)b.UsedAmount) ?? 0;
+
+                kpi.BudgetUtilizationRate = totalBudgetAllocated > 0 
+                    ? Math.Round((totalBudgetUsed / totalBudgetAllocated * 100), 1)
+                    : 0;
+
+                // Pending Expenses Count
+                kpi.PendingExpenses = await _context.Expenses
+                    .CountAsync(e => e.Status == "Pending");
+
+                // Total Departments Count
+                kpi.DepartmentCount = await _context.Departments
+                    .CountAsync();
+
+                // Total Budget Data
+                kpi.TotalBudgetAllocated = totalBudgetAllocated;
+                kpi.TotalBudgetUsed = totalBudgetUsed;
+                kpi.RemainingBudget = totalBudgetAllocated - totalBudgetUsed;
+
+                return kpi;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Accountant KPI data");
+                return new AccountantKPIDto();
+            }
+        }
+
+        /// <summary>
+        /// Get expense summary statistics
+        /// </summary>
+        public async Task<ExpenseSummaryDto> GetExpenseSummaryAsync()
+        {
+            try
+            {
+                var summary = new ExpenseSummaryDto
+                {
+                    TotalExpenses = await _context.Expenses
+                        .SumAsync(e => (decimal?)e.Amount) ?? 0,
+                    PendingCount = await _context.Expenses
+                        .CountAsync(e => e.Status == "Pending"),
+                    ApprovedCount = await _context.Expenses
+                        .CountAsync(e => e.Status == "Approved"),
+                    RejectedCount = await _context.Expenses
+                        .CountAsync(e => e.Status == "Rejected")
+                };
+
+                return summary;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading expense summary");
+                return new ExpenseSummaryDto();
+            }
+        }
+
+        /// <summary>
+        /// Get department budget details
+        /// </summary>
+        public async Task<List<DepartmentBudgetDetailDto>> GetDepartmentBudgetDetailsAsync()
+        {
+            try
+            {
+                var departments = await _context.Budgets
+                    .Include(b => b.Department)
+                    .GroupBy(b => b.Department)
+                    .Select(g => new DepartmentBudgetDetailDto
+                    {
+                        DepartmentName = g.Key != null ? g.Key.DepartmentName : "Unassigned",
+                        AllocatedAmount = g.Sum(b => b.AllocatedAmount),
+                        UsedAmount = g.Sum(b => b.UsedAmount),
+                        RemainingAmount = g.Sum(b => b.AllocatedAmount) - g.Sum(b => b.UsedAmount),
+                        UtilizationRate = g.Sum(b => b.AllocatedAmount) > 0
+                            ? Math.Round((g.Sum(b => b.UsedAmount) / g.Sum(b => b.AllocatedAmount) * 100), 1)
+                            : 0
+                    })
+                    .OrderByDescending(x => x.AllocatedAmount)
+                    .ToListAsync();
+
+                return departments;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading department budget details");
+                return new List<DepartmentBudgetDetailDto>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// DTO for Accountant KPI data
+    /// </summary>
+    public class AccountantKPIDto
+    {
+        public decimal BudgetUtilizationRate { get; set; }
+        public int PendingExpenses { get; set; }
+        public int DepartmentCount { get; set; }
+        public decimal TotalBudgetAllocated { get; set; }
+        public decimal TotalBudgetUsed { get; set; }
+        public decimal RemainingBudget { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for Expense summary
+    /// </summary>
+    public class ExpenseSummaryDto
+    {
+        public decimal TotalExpenses { get; set; }
+        public int PendingCount { get; set; }
+        public int ApprovedCount { get; set; }
+        public int RejectedCount { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for Department Budget Details
+    /// </summary>
+    public class DepartmentBudgetDetailDto
+    {
+        public string DepartmentName { get; set; } = string.Empty;
+        public decimal AllocatedAmount { get; set; }
+        public decimal UsedAmount { get; set; }
+        public decimal RemainingAmount { get; set; }
+        public decimal UtilizationRate { get; set; }
+    }
+}

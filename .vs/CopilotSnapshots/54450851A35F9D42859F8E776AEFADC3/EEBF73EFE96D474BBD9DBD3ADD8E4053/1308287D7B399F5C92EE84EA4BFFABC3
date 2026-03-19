@@ -1,0 +1,482 @@
+﻿@{
+    ViewData["Title"] = "Operational Processing";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Operational Processing & Reports</h2>
+            <p>Manage daily operations and generate operational reports.</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+                <i class="fas fa-plus me-2"></i>New Process
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <h3>42</h3>
+            <p>Active Processes</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-check-double"></i>
+            </div>
+            <h3>156</h3>
+            <p>Completed This Month</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h3>8</h3>
+            <p>Pending Approval</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <h3>45</h3>
+            <p>Reports Generated</p>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+            <i class="fas fa-plus-circle"></i>
+            <span>New Process</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+            <i class="fas fa-file-export"></i>
+            <span>Generate Report</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="quick-action-btn" onclick="filterByStatus('pending')">
+            <i class="fas fa-hourglass-half"></i>
+            <span>View Pending</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="quick-action-btn" onclick="exportData()">
+            <i class="fas fa-download"></i>
+            <span>Export Data</span>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="chart-card mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">Search</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search processes..." id="searchInput" onkeyup="filterTable()">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">Department</label>
+            <select class="form-select" id="deptFilter" onchange="filterTable()">
+                <option value="">All Departments</option>
+                <option value="HR">Human Resources</option>
+                <option value="Finance">Finance</option>
+                <option value="Operations">Operations</option>
+                <option value="Sales">Sales</option>
+                <option value="IT">IT</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">Status</label>
+            <select class="form-select" id="statusFilter" onchange="filterTable()">
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-semibold">&nbsp;</label>
+            <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                <i class="fas fa-redo me-1"></i>Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Processes Table -->
+<div class="data-table">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Operational Processes</h5>
+        <span class="badge bg-primary" id="recordCount">Showing 8 records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0" id="processTable">
+            <thead>
+                <tr>
+                    <th>Process ID</th>
+                    <th>Process Name</th>
+                    <th>Department</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-001</span></td>
+                    <td>Monthly Payroll Processing</td>
+                    <td>Finance</td>
+                    <td>Maria Santos</td>
+                    <td><span class="badge bg-success">Active</span></td>
+                    <td>Feb 15, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-001')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" title="Edit" onclick="editProcess('OP-001')"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-outline-success" title="Complete" onclick="completeProcess('OP-001')"><i class="fas fa-check"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-002</span></td>
+                    <td>Leave Request Approval</td>
+                    <td>HR</td>
+                    <td>Juan Dela Cruz</td>
+                    <td><span class="badge bg-warning text-dark">Pending</span></td>
+                    <td>Feb 15, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-002')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" title="Edit" onclick="editProcess('OP-002')"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-outline-success" title="Approve" onclick="approveProcess('OP-002')"><i class="fas fa-check"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-003</span></td>
+                    <td>Inventory Reconciliation</td>
+                    <td>Operations</td>
+                    <td>Pedro Reyes</td>
+                    <td><span class="badge bg-success">Active</span></td>
+                    <td>Feb 14, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-003')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" title="Edit" onclick="editProcess('OP-003')"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-outline-success" title="Complete" onclick="completeProcess('OP-003')"><i class="fas fa-check"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-004</span></td>
+                    <td>Sales Order Processing</td>
+                    <td>Sales</td>
+                    <td>Ana Garcia</td>
+                    <td><span class="badge bg-secondary">Completed</span></td>
+                    <td>Feb 14, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-004')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-info" title="Report" onclick="generateProcessReport('OP-004')"><i class="fas fa-file-alt"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-005</span></td>
+                    <td>System Maintenance Request</td>
+                    <td>IT</td>
+                    <td>Jose Mendoza</td>
+                    <td><span class="badge bg-warning text-dark">Pending</span></td>
+                    <td>Feb 13, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-005')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" title="Edit" onclick="editProcess('OP-005')"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-outline-success" title="Approve" onclick="approveProcess('OP-005')"><i class="fas fa-check"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-006</span></td>
+                    <td>Budget Reallocation Request</td>
+                    <td>Finance</td>
+                    <td>Maria Santos</td>
+                    <td><span class="badge bg-success">Active</span></td>
+                    <td>Feb 13, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-006')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" title="Edit" onclick="editProcess('OP-006')"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-outline-success" title="Complete" onclick="completeProcess('OP-006')"><i class="fas fa-check"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-007</span></td>
+                    <td>Employee Onboarding</td>
+                    <td>HR</td>
+                    <td>Juan Dela Cruz</td>
+                    <td><span class="badge bg-secondary">Completed</span></td>
+                    <td>Feb 12, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-007')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-info" title="Report" onclick="generateProcessReport('OP-007')"><i class="fas fa-file-alt"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="fw-semibold text-primary">#OP-008</span></td>
+                    <td>Client Meeting Preparation</td>
+                    <td>Sales</td>
+                    <td>Ana Garcia</td>
+                    <td><span class="badge bg-success">Active</span></td>
+                    <td>Feb 12, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewProcess('OP-008')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" title="Edit" onclick="editProcess('OP-008')"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-outline-success" title="Complete" onclick="completeProcess('OP-008')"><i class="fas fa-check"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-end mb-0">
+            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+            <li class="page-item"><a class="page-link" href="#">2</a></li>
+            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+        </ul>
+    </nav>
+</div>
+
+<!-- New Process Modal -->
+<div class="modal fade" id="newProcessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2 text-primary"></i>New Operational Process</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newProcessForm">
+                    <div class="mb-3">
+                        <label class="form-label">Process Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Department <span class="text-danger">*</span></label>
+                        <select class="form-select" required>
+                            <option value="">Select Department</option>
+                            <option>Human Resources</option>
+                            <option>Finance</option>
+                            <option>Operations</option>
+                            <option>Sales</option>
+                            <option>IT</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Assign To <span class="text-danger">*</span></label>
+                        <select class="form-select" required>
+                            <option value="">Select Employee</option>
+                            <option>Maria Santos</option>
+                            <option>Juan Dela Cruz</option>
+                            <option>Pedro Reyes</option>
+                            <option>Ana Garcia</option>
+                            <option>Jose Mendoza</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select">
+                            <option>Normal</option>
+                            <option>High</option>
+                            <option>Urgent</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitNewProcess()">
+                    <i class="fas fa-save me-1"></i>Create Process
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Report Modal -->
+<div class="modal fade" id="generateReportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-export me-2 text-primary"></i>Generate Operational Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Report Type</label>
+                        <select class="form-select">
+                            <option>Daily Operations Summary</option>
+                            <option>Weekly Process Report</option>
+                            <option>Monthly Performance Report</option>
+                            <option>Custom Date Range</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Department</label>
+                        <select class="form-select">
+                            <option>All Departments</option>
+                            <option>Human Resources</option>
+                            <option>Finance</option>
+                            <option>Operations</option>
+                            <option>Sales</option>
+                            <option>IT</option>
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">From Date</label>
+                            <input type="date" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">To Date</label>
+                            <input type="date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Format</label>
+                        <select class="form-select">
+                            <option>PDF</option>
+                            <option>Excel</option>
+                            <option>CSV</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="generateReport()">
+                    <i class="fas fa-download me-1"></i>Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Filter table
+    function filterTable() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const dept = document.getElementById('deptFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const rows = document.querySelectorAll('#processTable tbody tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const rowDept = row.cells[2].textContent;
+            const rowStatus = row.cells[4].textContent.trim();
+            
+            const matchSearch = text.includes(search);
+            const matchDept = !dept || rowDept.includes(dept);
+            const matchStatus = !status || rowStatus.includes(status);
+            
+            if (matchSearch && matchDept && matchStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('recordCount').textContent = `Showing ${visibleCount} records`;
+    }
+    
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('deptFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        filterTable();
+    }
+    
+    function filterByStatus(status) {
+        document.getElementById('statusFilter').value = status.charAt(0).toUpperCase() + status.slice(1);
+        filterTable();
+    }
+    
+    // Process actions
+    function viewProcess(id) {
+        alert('Viewing process: ' + id + '\n\nThis will open the process details page.');
+    }
+    
+    function editProcess(id) {
+        alert('Editing process: ' + id + '\n\nThis will open the edit form.');
+    }
+    
+    function completeProcess(id) {
+        if (confirm('Mark process ' + id + ' as completed?')) {
+            alert('Process ' + id + ' marked as completed!');
+        }
+    }
+    
+    function approveProcess(id) {
+        if (confirm('Approve process ' + id + '?')) {
+            alert('Process ' + id + ' has been approved!');
+        }
+    }
+    
+    function generateProcessReport(id) {
+        alert('Generating report for process: ' + id);
+    }
+    
+    function submitNewProcess() {
+        alert('New process created successfully!');
+        bootstrap.Modal.getInstance(document.getElementById('newProcessModal')).hide();
+    }
+    
+    function generateReport() {
+        alert('Generating operational report...\n\nReport will be downloaded shortly.');
+        bootstrap.Modal.getInstance(document.getElementById('generateReportModal')).hide();
+    }
+    
+    function exportData() {
+        alert('Exporting data to Excel...');
+    }
+</script>
+}

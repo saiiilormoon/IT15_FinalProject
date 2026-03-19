@@ -1,0 +1,498 @@
+/* ========================================
+   HR Dashboard Styling
+   ======================================== */
+
+.hr-card {
+    background: linear-gradient(135deg, #e8f4f8 0%, #f0f8fc 100%);
+    border-left: 4px solid #3498db;
+}
+
+.hr-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.hr-action-btn:hover {
+    background: linear-gradient(135deg, #2980b9, #1f618d);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    color: white;
+}
+
+/* ========================================
+   Auditor Dashboard Styling
+   ======================================== */
+
+.audit-card {
+    background: linear-gradient(135deg, #fff8e8 0%, #fffbf0 100%);
+    border-left: 4px solid #f39c12;
+}
+
+.audit-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #f39c12, #d68910);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.audit-action-btn:hover {
+    background: linear-gradient(135deg, #d68910, #ba4a00);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+    color: white;
+}
+
+/* ========================================
+   Financial Dashboard Styling
+   ======================================== */
+
+.financial-card {
+    background: linear-gradient(135deg, #e8f8f0 0%, #f0fcf8 100%);
+    border-left: 4px solid #27ae60;
+}
+
+.financial-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #27ae60, #1e8449);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.financial-action-btn:hover {
+    background: linear-gradient(135deg, #1e8449, #145a32);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+    color: white;
+}
+
+/* ========================================
+   Common Dashboard Styling
+   ======================================== */
+
+.page-header {
+    padding: 20px 0;
+    border-bottom: 2px solid #ecf0f1;
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.page-header .text-muted {
+    color: #95a5a6;
+    font-size: 0.95rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-4px);
+}
+
+.stat-card h3 {
+    color: #2c3e50;
+    font-weight: 700;
+    font-size: 2rem;
+    margin: 10px 0;
+}
+
+.stat-card .text-muted {
+    color: #95a5a6;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.stat-icon.bg-primary {
+    background-color: #3498db;
+}
+
+.stat-icon.bg-success {
+    background-color: #27ae60;
+}
+
+.stat-icon.bg-warning {
+    background-color: #f39c12;
+}
+
+.stat-icon.bg-info {
+    background-color: #1abc9c;
+}
+
+.stat-icon.bg-danger {
+    background-color: #e74c3c;
+}
+
+.chart-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.chart-card h5 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 20px 0;
+}
+
+.chart-container-sm {
+    position: relative;
+    height: 250px;
+    margin: 20px 0;
+}
+
+.activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.activity-item {
+    display: flex;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid #ecf0f1;
+    align-items: center;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-content h6 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin: 0;
+}
+
+.activity-content small {
+    color: #95a5a6;
+}
+
+/* ========================================
+   Table Styling
+   ======================================== */
+
+.table {
+    color: #2c3e50;
+}
+
+.table thead th {
+    border-bottom: 2px solid #ecf0f1;
+    color: #34495e;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table tbody td {
+    vertical-align: middle;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.badge.bg-success {
+    background-color: #27ae60 !important;
+}
+
+.badge.bg-info {
+    background-color: #3498db !important;
+}
+
+.badge.bg-warning {
+    background-color: #f39c12 !important;
+    color: white !important;
+}
+
+.badge.bg-danger {
+    background-color: #e74c3c !important;
+}
+
+.badge.bg-primary {
+    background-color: #3498db !important;
+}
+
+/* ========================================
+   Progress Bar Styling
+   ======================================== */
+
+.progress {
+    background-color: #ecf0f1;
+    border-radius: 4px;
+    height: 8px;
+}
+
+.progress-bar {
+    background-color: #3498db;
+    border-radius: 4px;
+}
+
+.progress-bar.bg-success {
+    background-color: #27ae60 !important;
+}
+
+.progress-bar.bg-warning {
+    background-color: #f39c12 !important;
+}
+
+.progress-bar.bg-danger {
+    background-color: #e74c3c !important;
+}
+
+/* ========================================
+   Alert Styling
+   ======================================== */
+
+.alert {
+    border-radius: 6px;
+    border: none;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.alert i {
+    color: inherit;
+}
+
+/* ========================================
+   Modal Styling
+   ======================================== */
+
+.modal-header {
+    border-bottom: 2px solid #ecf0f1;
+    background-color: #f8f9fa;
+}
+
+.modal-header h5 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.btn-group-vertical .btn {
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.btn-outline-primary {
+    color: #3498db;
+    border-color: #3498db;
+}
+
+.btn-outline-primary:hover {
+    background-color: #3498db;
+    border-color: #3498db;
+    color: white;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .stat-card h3 {
+        font-size: 1.5rem;
+    }
+
+    .chart-container,
+    .chart-container-sm {
+        height: 200px;
+    }
+
+    .activity-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.mb-5 {
+    margin-bottom: 3rem;
+}
+
+.me-2 {
+    margin-right: 0.5rem;
+}
+
+.text-muted {
+    color: #95a5a6;
+}
+
+.flex-grow-1 {
+    flex-grow: 1;
+}
+
+.text-end {
+    text-align: end;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.gap-3 {
+    gap: 1rem;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.align-items-start {
+    align-items: flex-start;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.py-3 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.p-3 {
+    padding: 1rem;
+}
+
+.small {
+    font-size: 0.875rem;
+}

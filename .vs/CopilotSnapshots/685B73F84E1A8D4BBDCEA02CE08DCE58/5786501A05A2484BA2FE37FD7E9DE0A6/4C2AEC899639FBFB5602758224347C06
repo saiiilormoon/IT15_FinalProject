@@ -1,0 +1,1262 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - CVM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" />
+    <link href="@Url.Content("~/css/kpi-dashboard.css")" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-dark: #1e3c72;
+            --primary-light: #2a5298;
+            --accent-blue: #00d4ff;
+            --sidebar-width: 280px;
+            --dark-bg: #0f172a;
+            --card-dark: #1a2f4a;
+            --border-color: rgba(0, 212, 255, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #f5f3f0 0%, #f9f7f4 100%);
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: linear-gradient(180deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            padding: 20px 0;
+            z-index: 1000;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            box-shadow: 8px 0 32px rgba(30, 60, 114, 0.2);
+            border-right: 1px solid rgba(0, 212, 255, 0.1);
+        }
+        
+        .sidebar-brand {
+            padding: 20px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+            margin-bottom: 25px;
+            background: linear-gradient(180deg, rgba(0,212,255,0.05) 0%, transparent 100%);
+        }
+
+        .sidebar-brand-logo {
+            width: 85px; 
+            height: 85px; 
+            margin: 0 auto 16px;
+            padding: 0;
+            background: linear-gradient(135deg, rgba(0,212,255,0.15) 0%, rgba(0,212,255,0.05) 100%);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+            box-shadow: 0 12px 32px rgba(0, 212, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .sidebar-brand-logo .logo-box {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #f5f3f0 0%, #faf8f5 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+            .sidebar-brand-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            }
+
+        .sidebar-brand-logo:hover {
+            transform: translateY(-6px) scale(1.05);
+            box-shadow: 0 16px 40px rgba(0, 212, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+            border-color: rgba(0, 212, 255, 0.35);
+            background: linear-gradient(135deg, rgba(0,212,255,0.2) 0%, rgba(0,212,255,0.1) 100%);
+        }
+
+        .sidebar-brand-logo:hover .logo-box {
+            transform: scale(1.08);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+        
+        .sidebar-brand h5 {
+            color: white;
+            font-weight: 700;
+            margin: 8px 0 2px 0;
+            font-size: 1.05rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .sidebar-brand small {
+            color: rgba(0, 212, 255, 0.7);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-menu li {
+            margin: 2px 12px;
+        }
+        
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 9px 16px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-weight: 500;
+            font-size: 0.9rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid transparent;
+        }
+        
+        .sidebar-menu a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,212,255,0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.4s ease;
+        }
+        
+        .sidebar-menu a::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: var(--accent-blue);
+            transform: scaleY(0);
+            transition: transform 0.25s ease;
+            border-radius: 0 3px 3px 0;
+        }
+        
+        .sidebar-menu a:hover {
+            background: rgba(0,212,255,0.1);
+            color: var(--accent-blue);
+            transform: translateX(4px);
+            border-color: rgba(0, 212, 255, 0.15);
+        }
+        
+        .sidebar-menu a:hover::before {
+            transform: translateX(0);
+        }
+        
+        .sidebar-menu a.active {
+            background: linear-gradient(90deg, rgba(0,212,255,0.2) 0%, rgba(0,212,255,0.05) 100%);
+            color: var(--accent-blue);
+            border-color: rgba(0, 212, 255, 0.3);
+            font-weight: 600;
+        }
+        
+        .sidebar-menu a.active::after {
+            transform: scaleY(1);
+        }
+        
+        .sidebar-menu a i {
+            width: 22px;
+            margin-right: 12px;
+            font-size: 1rem;
+        }
+        
+        .menu-divider {
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+            margin: 8px 16px;
+        }
+        
+        .menu-label {
+            padding: 5px 20px 3px;
+            color: rgba(0, 212, 255, 0.5);
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 1.3px;
+            font-weight: 700;
+        }
+        
+        /* Main Content Styles */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+        
+        /* Top Navbar */
+        .top-navbar {
+            background: linear-gradient(90deg, #1a3a52 0%, #2a5298 50%, #1e4d7b 100%);
+            padding: 14px 28px;
+            box-shadow: 0 2px 12px rgba(30, 60, 114, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+        
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: var(--primary-dark);
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .navbar-search {
+            position: relative;
+            width: 280px;
+        }
+        
+        .navbar-search input {
+            width: 100%;
+            padding: 8px 12px 8px 35px;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .navbar-search input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .navbar-search input:focus {
+            border-color: var(--accent-blue);
+            background: rgba(255,255,255,0.18);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+        
+        .navbar-search i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+        }
+        
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .notification-btn {
+            position: relative;
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.8);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .notification-btn:hover {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--accent-blue);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            background: #e74c3c;
+            color: white;
+            font-size: 0.65rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .user-dropdown:hover {
+            background: rgba(0, 212, 255, 0.15);
+        }
+        
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .user-info h6 {
+            margin: 0;
+            font-size: 0.85rem;
+            color: white;
+        }
+        
+        .user-info small {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.7rem;
+        }
+        
+        /* Page Content */
+        .page-content {
+            padding: 30px 28px;
+            background: linear-gradient(135deg, #1a3a52 0%, #2a5298 50%, #1e4d7b 100%);
+            min-height: 100vh;
+        }
+        
+        .page-header {
+            margin-bottom: 32px;
+            animation: fadeInDown 0.4s ease;
+        }
+        
+        .page-header h2 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 6px;
+            font-size: 1.7rem;
+            letter-spacing: -0.5px;
+        }
+        
+        .page-header p {
+            color: rgba(255,255,255,0.8);
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 400;
+        }
+        
+        @@keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Stat Cards */
+        .stat-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(245,243,240,0.95) 100%);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 8px 24px rgba(30, 60, 114, 0.2);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.5);
+            height: 100%;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-blue), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 32px rgba(0, 212, 255, 0.25);
+        }
+        
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+        
+        .stat-card .stat-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            margin-bottom: 12px;
+        }
+        
+        .stat-card .stat-icon.bg-primary {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        .stat-card .stat-icon.bg-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .stat-card .stat-icon.bg-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .stat-card .stat-icon.bg-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        .stat-card .stat-icon.bg-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .stat-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .stat-card p {
+            color: #6b7280;
+            margin: 0;
+            font-size: 0.85rem;
+        }
+        
+        .stat-card .stat-change {
+            font-size: 0.75rem;
+            margin-top: 8px;
+        }
+        
+        .stat-card .stat-change.positive { color: #10b981; }
+        .stat-card .stat-change.negative { color: #ef4444; }
+        
+        /* Chart Cards */
+        .chart-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(245,243,240,0.95) 100%);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 8px 24px rgba(30, 60, 114, 0.2);
+            height: 100%;
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .chart-card:hover {
+            box-shadow: 0 12px 32px rgba(0, 212, 255, 0.2);
+        }
+        
+        .chart-card h5 {
+            color: var(--primary-dark);
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        /* Chart container with fixed height */
+        .chart-container {
+            position: relative;
+            height: 220px;
+            width: 100%;
+        }
+        
+        .chart-container-sm {
+            position: relative;
+            height: 180px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chart-container canvas,
+        .chart-container-sm canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        /* Data Table */
+        .data-table {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(245,243,240,0.95) 100%);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 8px 24px rgba(30, 60, 114, 0.2);
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .data-table:hover {
+            box-shadow: 0 12px 32px rgba(0, 212, 255, 0.2);
+        }
+        
+        .data-table h5 {
+            color: var(--primary-dark);
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        .table th {
+            background: linear-gradient(90deg, rgba(30,60,114,0.05) 0%, rgba(42,82,152,0.05) 100%);
+            color: var(--primary-dark);
+            font-weight: 600;
+            border: none;
+            padding: 12px;
+            font-size: 0.85rem;
+        }
+        
+        .table td {
+            padding: 12px;
+            vertical-align: middle;
+            border-color: rgba(30, 60, 114, 0.05);
+            font-size: 0.85rem;
+        }
+        
+        .badge-status {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        
+        /* Activity List */
+        .activity-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .activity-item:last-child { border-bottom: none; }
+        
+        .activity-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .activity-content h6 {
+            margin: 0 0 3px 0;
+            font-size: 0.85rem;
+            color: #333;
+        }
+        
+        .activity-content small {
+            color: #999;
+            font-size: 0.75rem;
+        }
+        
+        /* Quick Action Buttons */
+        .quick-action-btn {
+            background: white;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: #333;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .quick-action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(42,82,152,0.05), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .quick-action-btn:hover::before {
+            left: 100%;
+        }
+        
+        .quick-action-btn:hover {
+            border-color: rgba(42,82,152,0.2);
+            background: white;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(42,82,152,0.1);
+            color: var(--primary-dark);
+        }
+        
+        .quick-action-btn i {
+            font-size: 1.6rem;
+            color: var(--primary-light);
+            margin-bottom: 10px;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+        
+        .quick-action-btn:hover i {
+            transform: scale(1.1) translateY(-2px);
+        }
+        
+        .quick-action-btn span {
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        
+        /* Modal Blur Background */
+        .modal-backdrop {
+            background: rgba(30, 60, 114, 0.3) !important;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        .modal-backdrop.show {
+            opacity: 1 !important;
+        }
+        
+        .modal-content {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @@keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            border-bottom: 1px solid #e9ecef;
+            padding: 20px 24px;
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .modal-footer {
+            border-top: 1px solid #e9ecef;
+            padding: 16px 24px;
+        }
+        
+        .modal-title {
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        
+        .btn-close:focus {
+            box-shadow: none;
+        }
+
+        /* Sidebar KPI Styles */
+        .sidebar-kpi {
+            background: linear-gradient(135deg, rgba(0,212,255,0.1) 0%, rgba(0,212,255,0.02) 100%);
+            border-radius: 10px;
+            padding: 11px 12px;
+            margin-top: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar-menu li:hover .sidebar-kpi {
+            background: linear-gradient(135deg, rgba(0,212,255,0.15) 0%, rgba(0,212,255,0.05) 100%);
+            border-color: rgba(0, 212, 255, 0.35);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.1);
+        }
+
+        .kpi-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.7rem;
+        }
+
+        .kpi-label {
+            font-weight: 600;
+            color: rgba(0, 212, 255, 0.7);
+            text-transform: capitalize;
+            font-size: 0.68rem;
+        }
+
+        .kpi-value {
+            font-weight: 700;
+            color: var(--accent-blue);
+            font-size: 0.82rem;
+            padding: 4px 10px;
+            background: rgba(0, 212, 255, 0.15);
+            border-radius: 6px;
+            min-width: 42px;
+            text-align: center;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .kpi-badge {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.95) 0%, rgba(255, 71, 87, 0.9) 100%);
+            color: white !important;
+            border-radius: 8px;
+            padding: 5px 11px !important;
+            font-weight: 700;
+            display: inline-block;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
+            font-size: 0.75rem;
+        }
+
+        .kpi-badge.zero {
+            background: rgba(255, 255, 255, 0.12) !important;
+            color: rgba(0, 212, 255, 0.8) !important;
+            border-color: rgba(0, 212, 255, 0.2);
+        }
+        
+        /* Responsive */
+        @@media (max-width: 991px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .sidebar-overlay.active {
+                display: block;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-toggle {
+                display: block;
+            }
+            
+            .navbar-search {
+                display: none;
+            }
+            
+            .user-info {
+                display: none;
+            }
+            
+            .page-content {
+                padding: 15px;
+            }
+        }
+        
+        @@media (max-width: 576px) {
+            .stat-card {
+                padding: 15px;
+            }
+            
+            .stat-card h3 {
+                font-size: 1.3rem;
+            }
+            
+            .page-header h2 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-logo">
+                <img src="@(Url.Content("~/images/logo_MIS.png"))" alt="CVM Logo" />
+            </div>
+            <h5 class="mb-0">CVM</h5>
+            <small>Centralized Organizational Management Information System</small>
+        </div>
+ 
+        
+        <div class="menu-label">Main Menu</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="@Url.Action("Index", "Dashboard")" class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Index" && ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </li>
+        </ul>
+
+        @{
+            var userRole = ViewBag.UserRole as string ?? "Employee";
+            var isSuperAdmin = userRole == "SuperAdmin";
+            var isAdmin = userRole == "Admin" || isSuperAdmin;
+            var isAccountant = userRole == "Accountant";
+            var isHR = userRole == "HR";
+            var isAuditor = userRole == "Auditor";
+            var isEmployee = userRole == "Employee";
+            var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+            var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+        }
+
+        @* =============================================
+           MODULE 1: OPERATIONAL PROCESSING
+           Admin/SuperAdmin: manage processes
+           HR: manage processes
+           (Accountant/Auditor/Employee: no access)
+           ============================================= *@
+        @if (isAdmin || isHR)
+        {
+            <div class="menu-divider"></div>
+            <div class="menu-label">Operational Processing</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="@Url.Action("Operations", "Dashboard")" class="@(currentAction == "Operations" ? "active" : "")">
+                        <i class="fas fa-clipboard-list"></i>
+                        Operational Processing
+                    </a>
+                </li>
+                <li>
+                    <a href="@Url.Action("ApprovedAndCompleted", "Dashboard")" class="@(currentAction == "ApprovedAndCompleted" ? "active" : "")">
+                        <i class="fas fa-check-double"></i>
+                        Approved & Completed
+                    </a>
+                </li>
+            </ul>
+        }
+
+        @* =============================================
+           MODULE 2: EMPLOYEE REQUESTS
+           All roles: can submit and view
+           Admin/SuperAdmin: can approve/complete
+           ============================================= *@
+        <div class="menu-divider"></div>
+        <div class="menu-label">Employee Requests</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="@Url.Action("EmployeeRequests", "Dashboard")" class="@(currentAction == "EmployeeRequests" ? "active" : "")">
+                    <i class="fas fa-file-alt"></i>
+                    Employee Requests
+                </a>
+                @{
+                    var pendingReqCount = ViewBag.PendingRequests as int? ?? 0;
+                }
+                @if (pendingReqCount > 0 && isAdmin)
+                {
+                    <div class="sidebar-kpi">
+                        <div class="kpi-item">
+                            <span class="kpi-label">Pending</span>
+                            <span class="kpi-value kpi-badge">@pendingReqCount</span>
+                        </div>
+                    </div>
+                }
+            </li>
+        </ul>
+
+        @* =============================================
+           MODULE 3: PERFORMANCE MONITORING
+           Admin/SuperAdmin: performance records + employee dir + departments
+           HR: same as Admin (their primary module)
+           (Accountant/Auditor/Employee: no access)
+           ============================================= *@
+        @if (isAdmin || isHR)
+        {
+            <div class="menu-divider"></div>
+            <div class="menu-label">Performance Monitoring</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="@Url.Action("Performance", "Dashboard")" class="@(currentAction == "Performance" || currentAction == "EmployeePerformanceMonitor" ? "active" : "")">
+                        <i class="fas fa-chart-line"></i>
+                        Performance Monitoring
+                    </a>
+                </li>
+                <li>
+                    <a href="@Url.Action("Employees", "Dashboard")" class="@(currentAction == "Employees" || currentAction == "ArchivedEmployees" ? "active" : "")">
+                        <i class="fas fa-address-card"></i>
+                        Employee Directory
+                    </a>
+                </li>
+                <li>
+                    <a href="@Url.Action("Departments", "Dashboard")" class="@(currentAction == "Departments" || currentAction == "ArchivedDepartments" ? "active" : "")">
+                        <i class="fas fa-sitemap"></i>
+                        Department Management
+                    </a>
+                </li>
+                @* HR Dashboard: only for HR role, not needed by Admin/SuperAdmin *@
+                @if (isHR)
+                {
+                    <li>
+                        <a href="@Url.Action("HRDashboard", "Dashboard")" class="@(currentAction == "HRDashboard" ? "active" : "")">
+                            <i class="fas fa-users"></i>
+                            HR Dashboard
+                        </a>
+                        @{
+                            var empCount = ViewBag.TotalEmployees as int? ?? 0;
+                        }
+                        @if (empCount > 0)
+                        {
+                            <div class="sidebar-kpi">
+                                <div class="kpi-item">
+                                    <span class="kpi-label">Employees</span>
+                                    <span class="kpi-value">@empCount</span>
+                                </div>
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        @* =============================================
+           MODULE 4: BUDGET MONITORING
+           Admin/SuperAdmin: budget overview + expense tracking only
+           Accountant: expense tracking + financial reports (their primary module)
+           (HR/Auditor/Employee: no access)
+           ============================================= *@
+        @if (isAdmin || isAccountant)
+        {
+            <div class="menu-divider"></div>
+            <div class="menu-label">Budget Monitoring</div>
+            <ul class="sidebar-menu">
+                @if (isAdmin)
+                {
+                    <li>
+                        <a href="@Url.Action("Budget", "Dashboard")" class="@(currentAction == "Budget" ? "active" : "")">
+                            <i class="fas fa-coins"></i>
+                            Budget Monitoring
+                        </a>
+                    </li>
+                }
+                <li>
+                    <a href="@Url.Action("ExpenseTracking", "Dashboard")" class="@(currentAction == "ExpenseTracking" ? "active" : "")">
+                        <i class="fas fa-receipt"></i>
+                        Expense Tracking
+                    </a>
+                    @{
+                        var pendingExp = ViewBag.PendingExpenses as int? ?? 0;
+                    }
+                    @if (pendingExp > 0)
+                    {
+                        <div class="sidebar-kpi">
+                            <div class="kpi-item">
+                                <span class="kpi-label">Pending</span>
+                                <span class="kpi-value kpi-badge">@pendingExp</span>
+                            </div>
+                        </div>
+                    }
+                </li>
+                @* Finance Dashboard & Financial Reports: only for Accountant role *@
+                @if (isAccountant)
+                {
+                    <li>
+                        <a href="@Url.Action("AccountantDashboard", "Dashboard")" class="@(currentAction == "AccountantDashboard" ? "active" : "")">
+                            <i class="fas fa-chart-pie"></i>
+                            Finance Dashboard
+                        </a>
+                        @{
+                            var budgetRate = ViewBag.BudgetUtilizationRate as decimal?;
+                        }
+                        @if (budgetRate.HasValue && budgetRate.Value > 0)
+                        {
+                            <div class="sidebar-kpi">
+                                <div class="kpi-item">
+                                    <span class="kpi-label">Budget Used</span>
+                                    <span class="kpi-value">@budgetRate.Value.ToString("F1")%</span>
+                                </div>
+                            </div>
+                        }
+                    </li>
+                    <li>
+                        <a href="@Url.Action("FinancialReports", "Dashboard")" class="@(currentAction == "FinancialReports" ? "active" : "")">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            Financial Reports
+                        </a>
+                        @{
+                            var deptCount = ViewBag.DepartmentCount as int? ?? 0;
+                        }
+                        @if (deptCount > 0)
+                        {
+                            <div class="sidebar-kpi">
+                                <div class="kpi-item">
+                                    <span class="kpi-label">Depts</span>
+                                    <span class="kpi-value">@deptCount</span>
+                                </div>
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        @* =============================================
+           MODULE 5: REPORTS & ANALYTICS
+           Admin/SuperAdmin: departmental reports + analytics only
+           HR: departmental reports (read-only)
+           Auditor: audit dashboard + export (their primary module)
+           (Accountant/Employee: no access)
+           ============================================= *@
+        @if (isAdmin || isAuditor || isHR)
+        {
+            <div class="menu-divider"></div>
+            <div class="menu-label">@(isAuditor ? "Compliance & Audit" : "Reports & Analytics")</div>
+            <ul class="sidebar-menu">
+                @if (isAdmin || isHR)
+                {
+                    <li>
+                        <a href="@Url.Action("Reports", "Dashboard")" class="@(currentAction == "Reports" ? "active" : "")">
+                            <i class="fas fa-building"></i>
+                            Departmental Reports
+                        </a>
+                    </li>
+                }
+                @if (isAdmin)
+                {
+                    <li>
+                        <a href="@Url.Action("Dashboard", "Reporting")" class="@(currentController == "Reporting" ? "active" : "")">
+                            <i class="fas fa-chart-bar"></i>
+                            Reports & Analytics
+                        </a>
+                    </li>
+                }
+                @* Audit Dashboard & Export: only for Auditor role, not Admin/SuperAdmin *@
+                @if (isAuditor)
+                {
+                    <li>
+                        <a href="@Url.Action("AuditorDashboard", "Dashboard")" class="@(currentAction == "AuditorDashboard" ? "active" : "")">
+                            <i class="fas fa-shield-alt"></i>
+                            Audit Dashboard
+                        </a>
+                        @{
+                            var auditLogCount = ViewBag.TotalAuditLogs as int? ?? 0;
+                        }
+                        @if (auditLogCount > 0)
+                        {
+                            <div class="sidebar-kpi">
+                                <div class="kpi-item">
+                                    <span class="kpi-label">Audit Logs</span>
+                                    <span class="kpi-value">@auditLogCount</span>
+                                </div>
+                            </div>
+                        }
+                    </li>
+                    <li>
+                        <a href="@Url.Action("ExportAuditLogs", "Dashboard")" title="Download audit logs as CSV">
+                            <i class="fas fa-download"></i>
+                            Export Audit Logs
+                        </a>
+                    </li>
+                }
+            </ul>
+        }
+
+        @* =============================================
+           ADMINISTRATION PANEL
+           SuperAdmin: full admin panel + archived users
+           Admin: manage users, pending approvals, system logs
+           (All other roles: no access)
+           ============================================= *@
+        @if (isAdmin)
+        {
+            <div class="menu-divider"></div>
+            <div class="menu-label">Administration</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="@Url.Action("Users", "Admin")" class="@(currentController == "Admin" && currentAction == "Users" ? "active" : "")">
+                        <i class="fas fa-users-cog"></i>
+                        Manage Users
+                    </a>
+                </li>
+                <li>
+                    <a href="@Url.Action("PendingApprovals", "Admin")" class="@(currentController == "Admin" && currentAction == "PendingApprovals" ? "active" : "")">
+                        <i class="fas fa-user-clock"></i>
+                        Pending Approvals
+                    </a>
+                </li>
+                @if (isSuperAdmin)
+                {
+                    <li>
+                        <a href="@Url.Action("ArchivedUsers", "Admin")" class="@(currentController == "Admin" && currentAction == "ArchivedUsers" ? "active" : "")">
+                            <i class="fas fa-archive"></i>
+                            Archived Users
+                        </a>
+                    </li>
+                }
+                <li>
+                    <a href="@Url.Action("Logs", "Admin")" class="@(currentController == "Admin" && currentAction == "Logs" ? "active" : "")">
+                        <i class="fas fa-history"></i>
+                        System Logs
+                    </a>
+                </li>
+            </ul>
+        }
+        
+        <div class="menu-divider"></div>
+        <div class="menu-label">Account</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="@Url.Action("Settings", "Dashboard")" class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Settings" ? "active" : "")">
+                    <i class="fas fa-user-cog"></i>
+                    My Account
+                </a>
+            </li>
+            <li>
+                <form asp-area="Identity" asp-page="/Account/Logout" method="post" id="logoutForm">
+                    <a href="javascript:document.getElementById('logoutForm').submit();">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Logout
+                    </a>
+                </form>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="navbar-left">
+                <button class="mobile-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="navbar-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search reports, employees..." />
+                </div>
+            </div>
+            
+            <div class="navbar-user">
+                <button class="notification-btn" title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge">3</span>
+                </button>
+                
+                <div class="dropdown">
+                    <div class="user-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="user-avatar">
+                            @{
+                                var displayName = ViewBag.UserName as string ?? "User";
+                                var displayRole = ViewBag.UserRole as string ?? "Employee";
+                                var initial = !string.IsNullOrEmpty(displayName) ? displayName[0].ToString().ToUpper() : "U";
+                            }
+                            @initial
+                        </div>
+                        <div class="user-info">
+                            <h6>@displayName</h6>
+                            <small>@displayRole</small>
+                        </div>
+                        <i class="fas fa-chevron-down ms-1 text-muted" style="font-size: 0.7rem;"></i>
+                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li><h6 class="dropdown-header">@ViewBag.UserEmail</h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="@Url.Action("Settings", "Dashboard")"><i class="fas fa-user me-2"></i>My Profile</a></li>
+                        <li><a class="dropdown-item" href="@Url.Action("Settings", "Dashboard")"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form asp-area="Identity" asp-page="/Account/Logout" method="post">
+                                <button type="submit" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Page Content -->
+        <div class="page-content">
+            @RenderBody()
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

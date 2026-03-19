@@ -1,0 +1,13 @@
+﻿{
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=LAPTOP-K5FUDO37\\SQLEXPRESS03;Initial Catalog=Db_CVM;Integrated Security=True;Trust Server Certificate=True"
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}

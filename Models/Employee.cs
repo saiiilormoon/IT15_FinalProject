@@ -1,0 +1,45 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace CVM_FinalProject.Models
+{
+    /// <summary>
+    /// Represents an employee in the system
+    /// </summary>
+    public class Employee
+    {
+        [Key]
+        [Column("Employee_ID")]
+        public string EmployeeId { get; set; } = Guid.NewGuid().ToString();
+
+        [Required]
+        [Column("user_ID")]
+        [ForeignKey("User")]
+        public string UserId { get; set; } = string.Empty;
+
+        [Required]
+        [Column("department_ID")]
+        [ForeignKey("Department")]
+        public int DepartmentId { get; set; }
+
+        [StringLength(100)]
+        public string? Position { get; set; }
+
+        [StringLength(50)]
+        public string? EmployeeStatus { get; set; }
+
+        [Column("date_hired")]
+        public DateTime? DateHired { get; set; }
+
+        [Column("is_archived")]
+        public bool IsArchived { get; set; } = false;
+
+        [Column("archive_date")]
+        public DateTime? ArchiveDate { get; set; }
+
+        // Navigation properties
+        public virtual ApplicationUser? User { get; set; }
+        public virtual Department? Department { get; set; }
+        public virtual ICollection<PerformanceRecord> PerformanceRecords { get; set; } = new List<PerformanceRecord>();
+    }
+}

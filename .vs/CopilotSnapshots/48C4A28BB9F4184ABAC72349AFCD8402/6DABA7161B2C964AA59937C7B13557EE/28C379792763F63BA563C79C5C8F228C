@@ -1,0 +1,1700 @@
+﻿using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using CVM_FinalProject.Models.ViewModels;
+using CVM_FinalProject.Services;
+using CVM_FinalProject.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Controllers
+{
+    /// <summary>
+    /// Dashboard Controller with Role-Based Access Control
+    /// Enforces authorization policies based on user roles
+    /// </summary>
+    [Authorize]
+    public class DashboardController : Controller
+    {
+    private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ILogger<DashboardController> _logger;
+        private readonly ApplicationDbContext _context;
+        private readonly DepartmentService _departmentService;
+        private readonly EmployeeService _employeeService;
+        private readonly PerformanceService _performanceService;
+        private readonly BudgetService _budgetService;
+        private readonly ReportService _reportService;
+        private readonly AuditService _auditService;
+        private readonly AccountantService _accountantService;
+
+        public DashboardController(
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            ILogger<DashboardController> logger,
+            ApplicationDbContext context,
+            DepartmentService departmentService,
+            EmployeeService employeeService,
+            PerformanceService performanceService,
+            BudgetService budgetService,
+            ReportService reportService,
+            AuditService auditService,
+            AccountantService accountantService)
+        {
+            _userManager = userManager;
+            _signInManager = signInManager;
+            _logger = logger;
+            _context = context;
+            _departmentService = departmentService;
+            _employeeService = employeeService;
+            _performanceService = performanceService;
+            _budgetService = budgetService;
+            _reportService = reportService;
+            _auditService = auditService;
+            _accountantService = accountantService;
+        }
+
+        private async Task SetUserViewBagAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserEmail = user?.Email ?? "user@example.com";
+            ViewBag.UserFirstName = user?.FirstName ?? "";
+            ViewBag.UserName = user?.FullName ?? user?.FirstName ?? "User";
+            ViewBag.FullName = user?.FullName ?? "User";
+            ViewBag.UserLastName = user?.LastName ?? "";
+            ViewBag.UserPhone = user?.PhoneNumber ?? "";
+            
+            // Get the user's role(s)
+            var roles = await _userManager.GetRolesAsync(user!);
+            ViewBag.UserRole = roles.FirstOrDefault() ?? "Employee";
+            ViewBag.UserRoles = roles;
+
+            // Load Accountant KPI data if user is Accountant
+            var userRole = ViewBag.UserRole as string ?? "Employee";
+            if (userRole == "Accountant" || userRole == "Admin" || userRole == "SuperAdmin")
+            {
+                await LoadAccountantKPIDataAsync();
+            }
+            
+            // Load HR KPI data if user is HR
+            if (userRole == "HR" || userRole == "Admin" || userRole == "SuperAdmin")
+            {
+                await LoadHRKPIDataAsync();
+            }
+            
+            // Load Auditor KPI data if user is Auditor
+            if (userRole == "Auditor" || userRole == "SuperAdmin")
+            {
+                await LoadAuditorKPIDataAsync();
+            }
+        }
+
+        private async Task LoadAccountantKPIDataAsync()
+        {
+            try
+            {
+                var kpi = await _accountantService.GetAccountantKPIAsync();
+                ViewBag.BudgetUtilizationRate = kpi.BudgetUtilizationRate;
+                ViewBag.PendingExpenses = kpi.PendingExpenses;
+                ViewBag.DepartmentCount = kpi.DepartmentCount;
+                ViewBag.TotalBudgetAllocated = kpi.TotalBudgetAllocated;
+                ViewBag.TotalBudgetUsed = kpi.TotalBudgetUsed;
+                ViewBag.RemainingBudget = kpi.RemainingBudget;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Accountant KPI data");
+                ViewBag.BudgetUtilizationRate = 0;
+                ViewBag.PendingExpenses = 0;
+                ViewBag.DepartmentCount = 0;
+            }
+        }
+
+        private async Task LoadHRKPIDataAsync()
+        {
+            try
+            {
+                var totalEmployees = await _context.Employees.CountAsync();
+                var totalDepartments = await _context.Departments.CountAsync();
+                var performanceRecords = await _context.PerformanceRecords.ToListAsync();
+                var avgRating = performanceRecords.Count > 0 ? performanceRecords.Average(p => p.PerformanceRating) : 0;
+                
+                ViewBag.TotalEmployees = totalEmployees;
+                ViewBag.TotalDepartments = totalDepartments;
+                ViewBag.TotalPerformanceRecords = performanceRecords.Count;
+                ViewBag.AvgPerformanceRating = avgRating;
+
+                // Load employees list
+                var employees = await _context.Employees
+                    .Include(e => e.User)
+                    .Include(e => e.Department)
+                    .ToListAsync();
+                var employeesList = employees.Select(e => new
+                {
+                    EmployeeName = e.User?.FullName ?? "Unknown",
+                    DepartmentName = e.Department?.DepartmentName ?? "Unassigned",
+                    Position = e.Position ?? "N/A"
+                }).Cast<dynamic>().ToList();
+                ViewBag.EmployeesList = employeesList;
+
+                // Load department summary
+                var deptSummary = await _context.Departments
+                    .Select(d => new
+                    {
+                        DepartmentName = d.DepartmentName,
+                        EmployeeCount = d.Employees.Count
+                    })
+                    .ToListAsync();
+                ViewBag.DepartmentSummary = deptSummary.Cast<dynamic>().ToList();
+
+                // Load top performers
+                var topPerformers = performanceRecords
+                    .OrderByDescending(p => p.PerformanceRating)
+                    .Take(5)
+                    .Select(p => new
+                    {
+                        EmployeeName = p.EmployeeId,
+                        PerformanceRating = p.PerformanceRating
+                    })
+                    .Cast<dynamic>()
+                    .ToList();
+                ViewBag.TopPerformers = topPerformers;
+
+                // Load performance records
+                var perfRecords = performanceRecords
+                    .OrderByDescending(p => p.PerformanceId)
+                    .Take(10)
+                    .Select(p => new
+                    {
+                        EmployeeName = p.EmployeeId,
+                        EvaluationPeriod = p.EvaluationPeriod,
+                        PerformanceRating = p.PerformanceRating,
+                        TasksCompleted = p.TasksCompleted
+                    })
+                    .Cast<dynamic>()
+                    .ToList();
+                ViewBag.PerformanceRecords = perfRecords;
+
+                // Performance distribution
+                var excellentCount = performanceRecords.Count(p => p.PerformanceRating >= 4);
+                var goodCount = performanceRecords.Count(p => p.PerformanceRating >= 3 && p.PerformanceRating < 4);
+                var averageCount = performanceRecords.Count(p => p.PerformanceRating >= 2 && p.PerformanceRating < 3);
+                var belowAverageCount = performanceRecords.Count(p => p.PerformanceRating < 2);
+
+                ViewBag.ExcellentCount = excellentCount;
+                ViewBag.GoodCount = goodCount;
+                ViewBag.AverageCount = averageCount;
+                ViewBag.BelowAverageCount = belowAverageCount;
+
+                // Department performance data
+                var deptPerformance = await _context.Departments
+                    .Select(d => new
+                    {
+                        DepartmentName = d.DepartmentName,
+                        AvgRating = d.Employees
+                            .SelectMany(e => e.PerformanceRecords)
+                            .Average(p => (decimal?)p.PerformanceRating) ?? 0
+                    })
+                    .ToListAsync();
+
+                ViewBag.DepartmentLabels = deptPerformance.Select(d => d.DepartmentName).ToList();
+                ViewBag.DepartmentPerformanceData = deptPerformance.Select(d => d.AvgRating).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading HR KPI data");
+                ViewBag.TotalEmployees = 0;
+                ViewBag.TotalDepartments = 0;
+                ViewBag.TotalPerformanceRecords = 0;
+                ViewBag.AvgPerformanceRating = 0;
+            }
+        }
+
+        private async Task LoadAuditorKPIDataAsync()
+        {
+            try
+            {
+                var auditLogs = await _context.AuditLogs.OrderByDescending(a => a.AssignedAt).Take(100).ToListAsync();
+                var totalLogs = await _context.AuditLogs.CountAsync();
+
+                ViewBag.TotalAuditLogs = totalLogs;
+                ViewBag.UserActivitiesCount = auditLogs.Count(a => a.Action.Contains("Login") || a.Action.Contains("Logout"));
+                ViewBag.DataModificationsCount = auditLogs.Count(a => a.Action.Contains("Create") || a.Action.Contains("Update") || a.Action.Contains("Delete"));
+                ViewBag.ComplianceScore = 95; // Default compliance score
+
+                // Load audit logs
+                var logsDisplay = auditLogs
+                    .Take(20)
+                    .Select(a => new
+                    {
+                        Timestamp = a.AssignedAt,
+                        UserName = a.UserId,
+                        Action = a.Action,
+                        EntityName = "System"
+                    })
+                    .ToList();
+                ViewBag.AuditLogs = logsDisplay;
+
+                // Load financial audit data
+                var financialAudit = await _context.Budgets
+                    .Include(b => b.Department)
+                    .GroupBy(b => b.Department)
+                    .Select(g => new
+                    {
+                        DepartmentName = g.Key != null ? g.Key.DepartmentName : "Unassigned",
+                        AllocatedAmount = g.Sum(b => b.AllocatedAmount),
+                        UsedAmount = g.Sum(b => b.UsedAmount)
+                    })
+                    .ToListAsync();
+                ViewBag.FinancialAuditData = financialAudit;
+
+                // Load operational audit data
+                var operationalAudit = await _context.OperationalProcesses
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(15)
+                    .ToListAsync();
+                ViewBag.OperationalAuditData = operationalAudit;
+
+                // Activity distribution
+                ViewBag.LoginCount = auditLogs.Count(a => a.Action.Contains("Login"));
+                ViewBag.ModificationCount = auditLogs.Count(a => a.Action.Contains("Create") || a.Action.Contains("Update"));
+                ViewBag.ReportCount = auditLogs.Count(a => a.Action.Contains("Report"));
+                ViewBag.ApprovalCount = auditLogs.Count(a => a.Action.Contains("Approve"));
+                ViewBag.OtherCount = auditLogs.Count(a => !a.Action.Contains("Login") && !a.Action.Contains("Create") && !a.Action.Contains("Update") && !a.Action.Contains("Report") && !a.Action.Contains("Approve"));
+
+                // Monthly activities
+                var now = DateTime.UtcNow;
+                ViewBag.JanActivities = auditLogs.Count(a => a.AssignedAt.Month == 1);
+                ViewBag.FebActivities = auditLogs.Count(a => a.AssignedAt.Month == 2);
+                ViewBag.MarActivities = auditLogs.Count(a => a.AssignedAt.Month == 3);
+                ViewBag.AprActivities = auditLogs.Count(a => a.AssignedAt.Month == 4);
+                ViewBag.MayActivities = auditLogs.Count(a => a.AssignedAt.Month == 5);
+                ViewBag.JunActivities = auditLogs.Count(a => a.AssignedAt.Month == 6);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading Auditor KPI data");
+                ViewBag.TotalAuditLogs = 0;
+                ViewBag.UserActivitiesCount = 0;
+                ViewBag.DataModificationsCount = 0;
+                ViewBag.ComplianceScore = 0;
+            }
+        }
+
+        public class ProfileUpdateModel
+        {
+            public string? FirstName { get; set; }
+            public string? LastName { get; set; }
+            public string? PhoneNumber { get; set; }
+            public string? Role { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfilePost(ProfileUpdateModel model)
+        {
+            if (model == null)
+            {
+                TempData["Error"] = "Invalid request";
+                return RedirectToAction("Settings");
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found";
+                return RedirectToAction("Settings");
+            }
+
+            var didChange = false;
+            if (!string.IsNullOrWhiteSpace(model.FirstName) && model.FirstName.Trim() != user.FirstName)
+            {
+                user.FirstName = model.FirstName.Trim();
+                didChange = true;
+            }
+            if (!string.IsNullOrWhiteSpace(model.LastName) && model.LastName.Trim() != user.LastName)
+            {
+                user.LastName = model.LastName.Trim();
+                didChange = true;
+            }
+
+            if (didChange)
+            {
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    TempData["Error"] = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    return RedirectToAction("Settings");
+                }
+                await _signInManager.RefreshSignInAsync(user);
+            }
+
+            if (model.PhoneNumber != null && model.PhoneNumber.Trim() != user.PhoneNumber)
+            {
+                var phoneResult = await _userManager.SetPhoneNumberAsync(user, model.PhoneNumber.Trim());
+                if (!phoneResult.Succeeded)
+                {
+                    TempData["Error"] = string.Join("; ", phoneResult.Errors.Select(e => e.Description));
+                    return RedirectToAction("Settings");
+                }
+            }
+
+            // Role change handling - same as AJAX endpoint
+            if (!string.IsNullOrWhiteSpace(model.Role) && (User.IsInRole("Admin") || User.IsInRole("SuperAdmin")))
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                if (currentRoles.Contains("SuperAdmin"))
+                {
+                    // do not change SuperAdmin
+                }
+                else
+                {
+                    var newRole = model.Role.Trim();
+                    if (!currentRoles.Contains(newRole))
+                    {
+                        var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                        if (!removeResult.Succeeded)
+                        {
+                            TempData["Error"] = string.Join("; ", removeResult.Errors.Select(e => e.Description));
+                            return RedirectToAction("Settings");
+                        }
+                        var addResult = await _userManager.AddToRoleAsync(user, newRole);
+                        if (!addResult.Succeeded)
+                        {
+                            TempData["Error"] = string.Join("; ", addResult.Errors.Select(e => e.Description));
+                            return RedirectToAction("Settings");
+                        }
+                    }
+                }
+            }
+
+            TempData["Success"] = "Profile updated successfully";
+            return RedirectToAction("Settings");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfile([FromBody] ProfileUpdateModel model)
+        {
+            if (model == null)
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "User not found" });
+            }
+
+            var didChange = false;
+            if (!string.IsNullOrWhiteSpace(model.FirstName) && model.FirstName.Trim() != user.FirstName)
+            {
+                user.FirstName = model.FirstName.Trim();
+                didChange = true;
+            }
+            if (!string.IsNullOrWhiteSpace(model.LastName) && model.LastName.Trim() != user.LastName)
+            {
+                user.LastName = model.LastName.Trim();
+                didChange = true;
+            }
+
+            if (didChange)
+            {
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    var err = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    return Json(new { success = false, message = err });
+                }
+                await _signInManager.RefreshSignInAsync(user);
+            }
+
+            if (model.PhoneNumber != null && model.PhoneNumber.Trim() != user.PhoneNumber)
+            {
+                var phoneResult = await _userManager.SetPhoneNumberAsync(user, model.PhoneNumber.Trim());
+                if (!phoneResult.Succeeded)
+                {
+                    var err = string.Join("; ", phoneResult.Errors.Select(e => e.Description));
+                    return Json(new { success = false, message = err });
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.Role) && (User.IsInRole("Admin") || User.IsInRole("SuperAdmin")))
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                if (currentRoles.Contains("SuperAdmin"))
+                {
+                    goto SkipRoleChange;
+                }
+                var newRole = model.Role.Trim();
+                if (!currentRoles.Contains(newRole))
+                {
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                    if (!removeResult.Succeeded)
+                    {
+                        var err = string.Join("; ", removeResult.Errors.Select(e => e.Description));
+                        return Json(new { success = false, message = err });
+                    }
+
+                    var addResult = await _userManager.AddToRoleAsync(user, newRole);
+                    if (!addResult.Succeeded)
+                    {
+                        var err = string.Join("; ", addResult.Errors.Select(e => e.Description));
+                        return Json(new { success = false, message = err });
+                    }
+                }
+            }
+            SkipRoleChange:;
+
+            await SetUserViewBagAsync();
+
+            var updatedUser = await _userManager.FindByIdAsync(user.Id);
+            var updatedRoles = await _userManager.GetRolesAsync(updatedUser!);
+
+            if (updatedUser != null)
+            {
+                await _signInManager.RefreshSignInAsync(updatedUser);
+            }
+
+            return Json(new
+            {
+                success = true,
+                message = "Profile updated successfully",
+                firstName = updatedUser?.FirstName,
+                lastName = updatedUser?.LastName,
+                phoneNumber = updatedUser?.PhoneNumber,
+                email = updatedUser?.Email,
+                role = updatedRoles.FirstOrDefault()
+            });
+        }
+
+        private async Task<bool> IsUserApprovedAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            return user?.IsApproved ?? false;
+        }
+
+        public async Task<IActionResult> Index()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            // ============ KPI METRICS ============
+            // Dashboard summary counts
+            var totalEmployees = await _context.Employees.CountAsync();
+            var totalDepartments = await _context.Departments.CountAsync();
+            var activeProcesses = await _context.OperationalProcesses.CountAsync(p => p.Status == ProcessStatus.Approved || p.Status == ProcessStatus.Pending);
+            var completedProcesses = await _context.OperationalProcesses.CountAsync(p => p.Status == ProcessStatus.Completed);
+            var pendingRequests = await _context.EmployeeRequests.CountAsync(r => r.Status == RequestStatus.Pending);
+
+            // Budget Utilization Rate
+            var totalBudgetAllocated = await _context.Budgets.SumAsync(b => (decimal?)b.AllocatedAmount) ?? 0;
+            var totalBudgetUsed = await _context.Budgets.SumAsync(b => (decimal?)b.UsedAmount) ?? 0;
+            decimal budgetUtilizationRate = totalBudgetAllocated > 0 ? (totalBudgetUsed / totalBudgetAllocated * 100) : 0;
+
+            ViewBag.TotalEmployees = totalEmployees;
+            ViewBag.TotalDepartments = totalDepartments;
+            ViewBag.ActiveProcesses = activeProcesses;
+            ViewBag.CompletedProcesses = completedProcesses;
+            ViewBag.PendingRequests = pendingRequests;
+            ViewBag.BudgetUtilizationRate = Math.Round(budgetUtilizationRate, 2);
+            ViewBag.TotalBudgetAllocated = totalBudgetAllocated;
+            ViewBag.TotalBudgetUsed = totalBudgetUsed;
+
+            // ============ CHART DATA: Processes per Department ============
+            var processesByDept = await _context.OperationalProcesses
+                .GroupBy(p => p.Department)
+                .Select(g => new { Department = g.Key ?? "(Unassigned)", Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .ToListAsync();
+
+            ViewBag.ProcessDeptLabels = processesByDept.Select(x => x.Department).ToList();
+            ViewBag.ProcessDeptCounts = processesByDept.Select(x => x.Count).ToList();
+
+            // ============ CHART DATA: Request Status Distribution ============
+            var requestStatusCounts = await _context.EmployeeRequests
+                .GroupBy(r => r.Status)
+                .Select(g => new { Status = g.Key.ToString(), Count = g.Count() })
+                .ToListAsync();
+
+            var pendingCount = requestStatusCounts.FirstOrDefault(x => x.Status == "Pending")?.Count ?? 0;
+            var inProgressCount = requestStatusCounts.FirstOrDefault(x => x.Status == "InProgress")?.Count ?? 0;
+            var completedCount = requestStatusCounts.FirstOrDefault(x => x.Status == "Completed")?.Count ?? 0;
+            var rejectedCount = requestStatusCounts.FirstOrDefault(x => x.Status == "Rejected")?.Count ?? 0;
+
+            ViewBag.RequestStatusLabels = new[] { "Pending", "In Progress", "Completed", "Rejected" };
+            ViewBag.RequestStatusCounts = new[] { pendingCount, inProgressCount, completedCount, rejectedCount };
+
+            // ============ CHART DATA: Monthly Requests Trend (Last 6 Months) ============
+            var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
+            var monthlyRequests = await _context.EmployeeRequests
+                .Where(r => r.CreatedAt >= sixMonthsAgo)
+                .GroupBy(r => new { r.CreatedAt.Year, r.CreatedAt.Month })
+                .Select(g => new { YearMonth = g.Key, Count = g.Count() })
+                .OrderBy(x => x.YearMonth.Year).ThenBy(x => x.YearMonth.Month)
+                .ToListAsync();
+
+            var monthLabels = monthlyRequests.Select(x => DateTime.ParseExact($"{x.YearMonth.Year}-{x.YearMonth.Month:D2}", "yyyy-MM", System.Globalization.CultureInfo.InvariantCulture).ToString("MMM yyyy")).ToList();
+            var monthCounts = monthlyRequests.Select(x => x.Count).ToList();
+
+            // If no data, create 6 empty months
+            if (!monthlyRequests.Any())
+            {
+                monthLabels.Clear();
+                monthCounts.Clear();
+                for (int i = 5; i >= 0; i--)
+                {
+                    var date = DateTime.UtcNow.AddMonths(-i);
+                    monthLabels.Add(date.ToString("MMM yyyy"));
+                    monthCounts.Add(0);
+                }
+            }
+
+            ViewBag.MonthlyRequestLabels = monthLabels;
+            ViewBag.MonthlyRequestCounts = monthCounts;
+
+            // ============ CHART DATA: Process Status Distribution ============
+            var processStatusCounts = await _context.OperationalProcesses
+                .GroupBy(p => p.Status)
+                .Select(g => new { Status = g.Key.ToString(), Count = g.Count() })
+                .ToListAsync();
+
+            var processPendingCount = processStatusCounts.FirstOrDefault(x => x.Status == "Pending")?.Count ?? 0;
+            var processApprovedCount = processStatusCounts.FirstOrDefault(x => x.Status == "Approved" || x.Status == "Active")?.Count ?? 0;
+            var processCompletedCount = processStatusCounts.FirstOrDefault(x => x.Status == "Completed")?.Count ?? 0;
+            var processRejectedCount = 0; // No rejected status in enum
+
+            ViewBag.ProcessStatusLabels = new[] { "Pending", "Approved", "Completed" };
+            ViewBag.ProcessStatusCounts = new[] { processPendingCount, processApprovedCount, processCompletedCount };
+
+            // ============ CHART DATA: Department Performance (Employees per Department) ============
+            var deptEmployees = await _context.Departments
+                .Select(d => new { Department = d.DepartmentName, EmployeeCount = d.Employees.Count })
+                .OrderByDescending(x => x.EmployeeCount)
+                .Take(10)
+                .ToListAsync();
+
+            ViewBag.DeptPerformanceLabels = deptEmployees.Select(x => x.Department).ToList();
+            ViewBag.DeptPerformanceCounts = deptEmployees.Select(x => x.EmployeeCount).ToList();
+
+            return View();
+        }
+
+        public async Task<IActionResult> PendingApproval()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserName = user?.FirstName ?? "User";
+            ViewBag.UserEmail = user?.Email ?? "";
+            return View();
+        }
+
+        public async Task<IActionResult> Operations()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            
+            await SetUserViewBagAsync();
+            var userRole = ViewBag.UserRole as string;
+            
+            // Operations is restricted to Admin and HR ONLY
+            if (userRole == "Accountant")
+            {
+                TempData["Error"] = "You do not have permission to access Operational Processing.";
+                return RedirectToAction("Index");
+            }
+            
+            var processes = await _context.OperationalProcesses
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+            
+            ViewBag.OperationalProcesses = processes;
+            return View();
+        }
+
+        public async Task<IActionResult> Reports()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var reportStats = await _reportService.GetReportStatsAsync();
+            var allReports = await _reportService.GetAllReportsAsync();
+
+            ViewBag.ReportStats = reportStats;
+            return View(allReports);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> GenerateReportAjax([FromBody] GenerateReportRequest request)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
+                {
+                    return Json(new { success = false, message = "User not found" });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.ReportType))
+                {
+                    return Json(new { success = false, message = "Report type is required" });
+                }
+
+                // Generate report data based on type
+                string reportData = await GenerateReportDataAsync(request);
+
+                // Store in database
+                Report report = null;
+                switch (request.ReportType)
+                {
+                    case "Operational":
+                        report = await _reportService.GenerateOperationalReportAsync(user.Id, reportData);
+                        break;
+                    case "Departmental":
+                        if (string.IsNullOrWhiteSpace(request.Department) || !int.TryParse(request.Department, out int deptId))
+                        {
+                            return Json(new { success = false, message = "Department is required for Departmental reports" });
+                        }
+                        report = await _reportService.GenerateDepartmentalReportAsync(user.Id, deptId, reportData);
+                        break;
+                    case "Performance":
+                        report = await _reportService.GeneratePerformanceReportAsync(user.Id, reportData);
+                        break;
+                    case "Budget":
+                    case "Financial":
+                    case "Expense":
+                        report = await _reportService.GenerateBudgetReportAsync(user.Id, reportData);
+                        break;
+                    default:
+                        return Json(new { success = false, message = "Invalid report type" });
+                }
+
+                // Verify report was created successfully
+                if (report == null)
+                {
+                    return Json(new { success = false, message = "Failed to generate report. Please try again." });
+                }
+
+                _logger.LogInformation($"Report generated by {user.Email}: {report.ReportType}");
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Report generated successfully",
+                    reportId = report.ReportId,
+                    reportType = report.ReportType
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating report");
+                return Json(new { success = false, message = "Error generating report: " + ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateReportDataAsync(GenerateReportRequest request)
+        {
+            var data = new System.Text.StringBuilder();
+            data.AppendLine($"Report Type: {request.ReportType}");
+            data.AppendLine($"Generated Date: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+            data.AppendLine($"Date Range: {request.StartDate} to {request.EndDate}");
+            data.AppendLine();
+
+            switch (request.ReportType)
+            {
+                case "Operational":
+                    var processes = await _context.OperationalProcesses.ToListAsync();
+                    data.AppendLine($"Total Processes: {processes.Count}");
+                    data.AppendLine($"Pending: {processes.Count(p => p.Status == ProcessStatus.Pending)}");
+                    data.AppendLine($"Approved: {processes.Count(p => p.Status == ProcessStatus.Approved)}");
+                    data.AppendLine($"Completed: {processes.Count(p => p.Status == ProcessStatus.Completed)}");
+                    break;
+
+                case "Departmental":
+                    var depts = await _context.Departments.ToListAsync();
+                    data.AppendLine($"Total Departments: {depts.Count}");
+                    data.AppendLine($"Employees: {await _context.Employees.CountAsync()}");
+                    break;
+
+                case "Performance":
+                    var perfRecords = await _context.PerformanceRecords.ToListAsync();
+                    var avgRating = perfRecords.Count > 0 ? perfRecords.Average(p => p.PerformanceRating) : 0;
+                    data.AppendLine($"Total Records: {perfRecords.Count}");
+                    data.AppendLine($"Average Rating: {avgRating:F2}/5.0");
+                    break;
+
+                case "Budget":
+                case "Financial":
+                    var budgets = await _context.Budgets.ToListAsync();
+                    var totalAllocated = budgets.Sum(b => b.AllocatedAmount);
+                    var totalUsed = budgets.Sum(b => b.UsedAmount);
+                    data.AppendLine($"Total Budget Allocated: ₱ {totalAllocated:N0}");
+                    data.AppendLine($"Total Budget Used: ₱ {totalUsed:N0}");
+                    data.AppendLine($"Remaining: ₱ {(totalAllocated - totalUsed):N0}");
+                    data.AppendLine($"Utilization: {(totalAllocated > 0 ? (totalUsed / totalAllocated * 100) : 0):F2}%");
+                    break;
+
+                case "Expense":
+                    var expenses = await _context.Expenses.ToListAsync();
+                    var totalExpenses = expenses.Sum(e => e.Amount);
+                    data.AppendLine($"Total Expenses: ₱ {totalExpenses:N0}");
+                    data.AppendLine($"Pending Approval: {expenses.Count(e => e.Status == "Pending")}");
+                    data.AppendLine($"Approved: {expenses.Count(e => e.Status == "Approved")}");
+                    data.AppendLine($"Rejected: {expenses.Count(e => e.Status == "Rejected")}");
+                    break;
+            }
+
+            return data.ToString();
+        }
+
+        public async Task<IActionResult> ViewReport(int reportId)
+        {
+            try
+            {
+                var report = await _context.Reports
+                    .Include(r => r.User)
+                    .FirstOrDefaultAsync(r => r.ReportId == reportId);
+
+                if (report == null)
+                {
+                    return NotFound();
+                }
+
+                return View(report);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error viewing report");
+                return StatusCode(500, "Error viewing report");
+            }
+        }
+
+        public async Task<IActionResult> DownloadReport(int reportId)
+        {
+            try
+            {
+                var report = await _context.Reports.FirstOrDefaultAsync(r => r.ReportId == reportId);
+                if (report == null)
+                {
+                    return NotFound();
+                }
+
+                var fileContent = System.Text.Encoding.UTF8.GetBytes(report.ReportData ?? "");
+                return File(fileContent, "application/pdf", $"report-{reportId}.pdf");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading report");
+                return StatusCode(500, "Error downloading report");
+            }
+        }
+
+        [HttpDelete]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteReport(int reportId)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
+                {
+                    return Json(new { success = false, message = "User not found" });
+                }
+
+                // Only Admin/SuperAdmin or the creator can delete
+                var report = await _context.Reports.FirstOrDefaultAsync(r => r.ReportId == reportId);
+                if (report == null)
+                {
+                    return Json(new { success = false, message = "Report not found" });
+                }
+
+                if (report.GeneratedBy != user.Id && !User.IsInRole("Admin") && !User.IsInRole("SuperAdmin"))
+                {
+                    return Json(new { success = false, message = "You don't have permission to delete this report" });
+                }
+
+                await _reportService.DeleteReportAsync(reportId);
+                _logger.LogInformation($"Report {reportId} deleted by {user.Email}");
+
+                return Json(new { success = true, message = "Report deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting report");
+                return Json(new { success = false, message = "Error deleting report: " + ex.Message });
+            }
+        }
+
+        public async Task<IActionResult> ExportAllReports(string format = "pdf")
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
+                {
+                    return NotFound();
+                }
+
+                var reports = await _reportService.GetAllReportsAsync();
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("SYSTEM REPORTS EXPORT");
+                sb.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+                sb.AppendLine($"Exported by: {user.FullName}");
+                sb.AppendLine(new string('-', 80));
+
+                foreach (var report in reports)
+                {
+                    sb.AppendLine($"\n{report.ReportType}");
+                    sb.AppendLine($"Generated At: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss}");
+                    sb.AppendLine($"Generated By: {report.User?.FullName ?? "System"}");
+                    sb.AppendLine($"Data Length: {report.ReportData?.Length ?? 0} bytes");
+                    sb.AppendLine(new string('-', 80));
+                }
+
+                var fileContent = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+                var contentType = format switch
+                {
+                    "excel" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "csv" => "text/csv",
+                    _ => "application/pdf"
+                };
+
+                var fileName = $"reports-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.{format}";
+                return File(fileContent, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting reports");
+                return StatusCode(500, "Error exporting reports");
+            }
+        }
+
+        public class GenerateReportRequest
+        {
+            public string? ReportType { get; set; }
+            public string? Department { get; set; }
+            public string? StartDate { get; set; }
+            public string? EndDate { get; set; }
+            public string? Format { get; set; }
+            public bool IncludeCharts { get; set; }
+        }
+
+        public async Task<IActionResult> Departments()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var departments = await _departmentService.GetAllDepartmentsAsync();
+            return View(departments);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateDepartment([FromForm] string departmentName, [FromForm] string status)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Departments");
+                }
+
+                var dept = await _departmentService.CreateDepartmentAsync(departmentName, status);
+                await _auditService.LogDepartmentCreatedAsync(currentUser.Id, dept.DepartmentId);
+
+                TempData["Success"] = $"Department '{departmentName}' created successfully!";
+                return RedirectToAction("Departments");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating department");
+                TempData["Error"] = "Error creating department: " + ex.Message;
+                return RedirectToAction("Departments");
+            }
+        }
+
+        public async Task<IActionResult> DepartmentDetails(int id)
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var dept = await _departmentService.GetDepartmentWithEmployeesAsync(id);
+            if (dept == null)
+            {
+                return NotFound();
+            }
+
+            return View(dept);
+        }
+
+        public async Task<IActionResult> Employees()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            var employees = await _employeeService.GetAllEmployeesAsync();
+            return View(employees);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignEmployee([FromForm] string userId, [FromForm] int departmentId, [FromForm] string position)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Employees");
+                }
+
+                var emp = await _employeeService.CreateEmployeeAsync(userId, departmentId, position, "Active");
+                await _auditService.LogEmployeeAssignedAsync(currentUser.Id, emp.EmployeeId, departmentId);
+
+                TempData["Success"] = "Employee assigned to department successfully!";
+                return RedirectToAction("Employees");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning employee");
+                TempData["Error"] = "Error assigning employee: " + ex.Message;
+                return RedirectToAction("Employees");
+            }
+        }
+
+        public async Task<IActionResult> Performance()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+            
+            var userRole = ViewBag.UserRole as string;
+            if (!RoleBasedAuthorizationHelper.DashboardAccess.CanAccessPerformance(userRole))
+            {
+                return Forbid();
+            }
+
+            var perfStats = await _performanceService.GetEmployeePerformanceStatsAsync();
+            ViewBag.PerfStats = perfStats;
+            
+            return View("EmployeePerformanceMonitor", perfStats);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanManageHR")]
+        public async Task<IActionResult> RecordPerformance(
+            [FromForm] string employeeId, 
+            [FromForm] string evaluationPeriod, 
+            [FromForm] int tasksCompleted,
+            [FromForm] int tasksPending,
+            [FromForm] int performanceRating,
+            [FromForm] string? remarks = null)
+        {
+            try
+            {
+                // Authorization check - only SuperAdmin, Admin, and HR
+                if (!RoleBasedAuthorizationHelper.RoleHierarchy.CanManageHR(ViewBag.UserRole as string))
+                {
+                    TempData["Error"] = "You do not have permission to record performance";
+                    return RedirectToAction("Performance");
+                }
+
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Performance");
+                }
+
+                await _performanceService.RecordPerformanceAsync(
+                    employeeId, 
+                    evaluationPeriod, 
+                    tasksCompleted, 
+                    tasksPending, 
+                    performanceRating,
+                    remarks);
+                await _auditService.LogPerformanceRecordedAsync(currentUser.Id, employeeId);
+
+                TempData["Success"] = "Performance record created successfully!";
+                return RedirectToAction("Performance");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording performance");
+                TempData["Error"] = "Error recording performance: " + ex.Message;
+                return RedirectToAction("Performance");
+            }
+        }
+
+        public async Task<IActionResult> Budget()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            var userRole = ViewBag.UserRole as string;
+            if (!RoleBasedAuthorizationHelper.DashboardAccess.CanAccessBudget(userRole))
+            {
+                return Forbid();
+            }
+
+            var budgetStats = await _budgetService.GetBudgetStatsAsync();
+            return View(budgetStats);
+        }
+
+        /// <summary>
+        /// Accountant Dashboard - Financial Overview
+        /// Only accessible to Accountant role (and SuperAdmin/Admin)
+        /// </summary>
+        public async Task<IActionResult> AccountantDashboard()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            var userRole = ViewBag.UserRole as string ?? "Employee";
+            // SuperAdmin has full access, Accountant and Admin can access
+            if (userRole != "Accountant" && userRole != "Admin" && userRole != "SuperAdmin")
+            {
+                return Forbid();
+            }
+
+            // Budget KPIs
+            var totalBudgetAllocated = await _context.Budgets.SumAsync(b => (decimal?)b.AllocatedAmount) ?? 0;
+            var totalBudgetUsed = await _context.Budgets.SumAsync(b => (decimal?)b.UsedAmount) ?? 0;
+            var remainingBudget = totalBudgetAllocated - totalBudgetUsed;
+            var budgetUtilizationRate = totalBudgetAllocated > 0 ? (totalBudgetUsed / totalBudgetAllocated * 100) : 0;
+
+            ViewBag.TotalBudgetAllocated = totalBudgetAllocated;
+            ViewBag.TotalBudgetUsed = totalBudgetUsed;
+            ViewBag.RemainingBudget = remainingBudget;
+            ViewBag.BudgetUtilizationRate = Math.Round(budgetUtilizationRate, 2);
+
+            // Department-wise budget breakdown
+            var deptBudgets = await _context.Budgets
+                .Include(b => b.Department)
+                .GroupBy(b => b.Department)
+                .Select(g => new
+                {
+                    DepartmentName = g.Key != null ? g.Key.DepartmentName : "Unassigned",
+                    AllocatedAmount = g.Sum(b => b.AllocatedAmount),
+                    UsedAmount = g.Sum(b => b.UsedAmount),
+                    RemainingAmount = g.Sum(b => b.AllocatedAmount) - g.Sum(b => b.UsedAmount)
+                })
+                .OrderByDescending(x => x.AllocatedAmount)
+                .ToListAsync();
+
+            ViewBag.DepartmentBudgets = deptBudgets;
+
+            return View("AccountantDashboard");
+        }
+
+        /// <summary>
+        /// Expense Tracking - For Accountants to log and approve expenses
+        /// </summary>
+        public async Task<IActionResult> ExpenseTracking()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            var userRole = ViewBag.UserRole as string ?? "Employee";
+            // SuperAdmin has full access, Accountant and Admin can access
+            if (userRole != "Accountant" && userRole != "Admin" && userRole != "SuperAdmin")
+            {
+                return Forbid();
+            }
+
+            // Get expense summary from service
+            var summary = await _accountantService.GetExpenseSummaryAsync();
+            ViewBag.TotalExpenses = summary.TotalExpenses;
+            ViewBag.PendingExpenses = summary.PendingCount;
+            ViewBag.ApprovedExpenses = summary.ApprovedCount;
+            ViewBag.RejectedExpenses = summary.RejectedCount;
+
+            return View("ExpenseTracking");
+        }
+
+        /// <summary>
+        /// Financial Reports - For Accountants to view and generate reports
+        /// </summary>
+        public async Task<IActionResult> FinancialReports()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            var userRole = ViewBag.UserRole as string ?? "Employee";
+            // SuperAdmin has full access, Accountant and Admin can access
+            if (userRole != "Accountant" && userRole != "Admin" && userRole != "SuperAdmin")
+            {
+                return Forbid();
+            }
+
+            return View("FinancialReports");
+        }
+
+        /// <summary>
+        /// HR Dashboard - Human Resources Management Center
+        /// Only accessible to HR role (and SuperAdmin/Admin)
+        /// </summary>
+        public async Task<IActionResult> HRDashboard()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            var userRole = ViewBag.UserRole as string ?? "Employee";
+            // SuperAdmin has full access, HR and Admin can access
+            if (userRole != "HR" && userRole != "Admin" && userRole != "SuperAdmin")
+            {
+                return Forbid();
+            }
+
+            return View("HRDashboard");
+        }
+
+        /// <summary>
+        /// Auditor Dashboard - Compliance & Audit Center
+        /// Only accessible to Auditor role (and SuperAdmin)
+        /// </summary>
+        public async Task<IActionResult> AuditorDashboard()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            var userRole = ViewBag.UserRole as string ?? "Employee";
+            // SuperAdmin has full access, Auditor can access
+            if (userRole != "Auditor" && userRole != "SuperAdmin")
+            {
+                return Forbid();
+            }
+
+            return View("AuditorDashboard");
+        }
+
+        /// <summary>
+        /// Export Audit Logs for Auditor role
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ExportAuditLogs(string format = "csv")
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
+                {
+                    return NotFound();
+                }
+
+                var auditLogs = await _context.AuditLogs.OrderByDescending(a => a.AssignedAt).ToListAsync();
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("AUDIT LOGS EXPORT");
+                sb.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+                sb.AppendLine($"Exported by: {user.FullName}");
+                sb.AppendLine(new string('-', 100));
+
+                foreach (var log in auditLogs)
+                {
+                    sb.AppendLine($"\nTimestamp: {log.AssignedAt:yyyy-MM-dd HH:mm:ss}");
+                    sb.AppendLine($"User: {log.UserId}");
+                    sb.AppendLine($"Action: {log.Action}");
+                    sb.AppendLine($"Entity: System");
+                    sb.AppendLine(new string('-', 100));
+                }
+
+                var fileContent = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+                var contentType = format switch
+                {
+                    "excel" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "pdf" => "application/pdf",
+                    _ => "text/csv"
+                };
+
+                var fileName = $"audit-logs-{DateTime.UtcNow:yyyyMMdd-HHmmss}.{format}";
+                return File(fileContent, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting audit logs");
+                return StatusCode(500, "Error exporting audit logs");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Policy = "CanManageBudgets")]
+        public async Task<IActionResult> CreateBudget([FromForm] int departmentId, [FromForm] string budgetPeriod, [FromForm] decimal allocatedAmount)
+        {
+            try
+            {
+                // Authorization check - only SuperAdmin, Admin, and Accountant
+                if (!RoleBasedAuthorizationHelper.RoleHierarchy.CanManageBudgets(ViewBag.UserRole as string))
+                {
+                    TempData["Error"] = "You do not have permission to create budgets";
+                    return RedirectToAction("Budget");
+                }
+
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("Budget");
+                }
+
+                await _budgetService.CreateBudgetAsync(departmentId, budgetPeriod, allocatedAmount);
+                await _auditService.LogBudgetUpdatedAsync(currentUser.Id, departmentId, allocatedAmount);
+
+                TempData["Success"] = "Budget created successfully!";
+                return RedirectToAction("Budget");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating budget");
+                TempData["Error"] = "Error creating budget: " + ex.Message;
+                return RedirectToAction("Budget");
+            }
+        }
+
+        public async Task<IActionResult> Settings()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> ApprovedAndCompleted()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            
+            var processes = await _context.OperationalProcesses
+                .Where(p => p.Status == ProcessStatus.Approved || p.Status == ProcessStatus.Completed)
+                .OrderByDescending(p => p.ApprovedAt ?? p.CompletedAt ?? p.CreatedAt)
+                .ToListAsync();
+            
+            ViewBag.OperationalProcesses = processes;
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateOperationalProcess([FromForm] string processName, [FromForm] string department, [FromForm] string assignedTo, [FromForm] string priority, [FromForm] string description)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(processName))
+                {
+                    TempData["Error"] = "Process name is required";
+                    return RedirectToAction("Operations");
+                }
+
+                if (string.IsNullOrWhiteSpace(department))
+                {
+                    TempData["Error"] = "Department is required";
+                    return RedirectToAction("Operations");
+                }
+
+                if (string.IsNullOrWhiteSpace(assignedTo))
+                {
+                    TempData["Error"] = "Assigned to is required";
+                    return RedirectToAction("Operations");
+                }
+
+                var lastProcess = await _context.OperationalProcesses
+                    .OrderByDescending(p => p.ProcessId)
+                    .FirstOrDefaultAsync();
+
+                int nextNumber = 1;
+                if (lastProcess != null && lastProcess.ProcessId.StartsWith("OP-"))
+                {
+                    if (int.TryParse(lastProcess.ProcessId.Substring(3), out int lastNumber))
+                    {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+
+                string newProcessId = $"OP-{nextNumber:D3}";
+
+                // Parse priority from form (default Medium)
+                PriorityLevel parsedPriority = PriorityLevel.Medium;
+                if (!string.IsNullOrWhiteSpace(priority))
+                {
+                    Enum.TryParse<PriorityLevel>(priority, true, out parsedPriority);
+                }
+
+                var operationalProcess = new OperationalProcess
+                {
+                    ProcessId = newProcessId,
+                    Name = processName.Trim(),
+                    Department = department.Trim(),
+                    AssignedTo = assignedTo.Trim(),
+                    Priority = parsedPriority,
+                    Status = ProcessStatus.Pending,
+                    CreatedAt = DateTime.UtcNow,
+                    Notes = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
+                };
+
+                _context.OperationalProcesses.Add(operationalProcess);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Process {newProcessId} created successfully!";
+                _logger.LogInformation($"New operational process created: {newProcessId} - {processName}");
+
+                return RedirectToAction("Operations");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating operational process");
+                TempData["Error"] = "An error occurred while creating the process. Please try again.";
+                return RedirectToAction("Operations");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveProcessAjax([FromBody] ProcessActionRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.ProcessId))
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            try
+            {
+                var process = await _context.OperationalProcesses
+                    .FirstOrDefaultAsync(p => p.ProcessId == request.ProcessId);
+
+                if (process == null)
+                {
+                    return Json(new { success = false, message = "Process not found" });
+                }
+
+                process.Status = ProcessStatus.Approved;
+                process.ApprovedAt = DateTime.UtcNow;
+
+                _context.OperationalProcesses.Update(process);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Process {request.ProcessId} approved at {DateTime.UtcNow}");
+
+                return Json(new { success = true, message = "Process approved successfully", status = "APPROVED" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approving process");
+                return Json(new { success = false, message = "An error occurred while approving the process" });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CompleteProcessAjax([FromBody] ProcessActionRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.ProcessId))
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            try
+            {
+                var process = await _context.OperationalProcesses
+                    .FirstOrDefaultAsync(p => p.ProcessId == request.ProcessId);
+
+                if (process == null)
+                {
+                    return Json(new { success = false, message = "Process not found" });
+                }
+
+                process.Status = ProcessStatus.Completed;
+                process.CompletedAt = DateTime.UtcNow;
+
+                _context.OperationalProcesses.Update(process);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Process {request.ProcessId} completed at {DateTime.UtcNow}");
+
+                return Json(new { success = true, message = "Process completed successfully", status = "COMPLETED" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing process");
+                return Json(new { success = false, message = "An error occurred while completing the process" });
+            }
+        }
+
+        public async Task<IActionResult> EmployeeRequests()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return RedirectToAction("PendingApproval");
+            }
+
+            await SetUserViewBagAsync();
+
+            if (User.IsInRole("Employee"))
+            {
+                var myRequests = await _context.EmployeeRequests
+                    .Where(r => r.SubmittedByUserId == user.Id)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .ToListAsync();
+                
+                ViewBag.EmployeeRequests = myRequests;
+                ViewBag.IsAdminView = false;
+            }
+            else if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+            {
+                var allRequests = await _context.EmployeeRequests
+                    .OrderByDescending(r => r.CreatedAt)
+                    .ToListAsync();
+                
+                ViewBag.EmployeeRequests = allRequests;
+                ViewBag.IsAdminView = true;
+            }
+            else
+            {
+                return Forbid();
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateEmployeeRequest([FromForm] string requestTitle, [FromForm] string department, [FromForm] string requestType, [FromForm] string description)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
+                {
+                    TempData["Error"] = "User not found";
+                    return RedirectToAction("EmployeeRequests");
+                }
+
+                if (string.IsNullOrWhiteSpace(requestTitle))
+                {
+                    TempData["Error"] = "Request title is required";
+                    return RedirectToAction("EmployeeRequests");
+                }
+
+                if (string.IsNullOrWhiteSpace(department))
+                {
+                    TempData["Error"] = "Department is required";
+                    return RedirectToAction("EmployeeRequests");
+                }
+
+                if (string.IsNullOrWhiteSpace(requestType))
+                {
+                    TempData["Error"] = "Request type is required";
+                    return RedirectToAction("EmployeeRequests");
+                }
+
+                var lastRequest = await _context.EmployeeRequests
+                    .OrderByDescending(r => r.RequestId)
+                    .FirstOrDefaultAsync();
+
+                int nextNumber = 1;
+                if (lastRequest != null && lastRequest.RequestId.StartsWith("EMP-"))
+                {
+                    if (int.TryParse(lastRequest.RequestId.Substring(4), out int lastNumber))
+                    {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+
+                string newRequestId = $"EMP-{nextNumber:D4}";
+
+                var employeeRequest = new EmployeeRequest
+                {
+                    RequestId = newRequestId,
+                    Title = requestTitle.Trim(),
+                    Department = department.Trim(),
+                    RequestType = requestType.Trim(),
+                    Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                    Status = RequestStatus.Pending,
+                    SubmittedByUserId = user.Id,
+                    SubmittedByName = user.FullName,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.EmployeeRequests.Add(employeeRequest);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Request {newRequestId} submitted successfully! Admin will review it shortly.";
+                _logger.LogInformation($"New employee request created: {newRequestId} - {requestTitle} by {user.Email}");
+
+                return RedirectToAction("EmployeeRequests");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating employee request");
+                TempData["Error"] = "An error occurred while creating the request. Please try again.";
+                return RedirectToAction("EmployeeRequests");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> ApproveEmployeeRequestAjax([FromBody] EmployeeRequestActionRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.RequestId))
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            try
+            {
+                // Only Admin/SuperAdmin can approve
+                var userRole = User.Identity?.Name ?? "";
+                if (!User.IsInRole("Admin") && !User.IsInRole("SuperAdmin"))
+                {
+                    return Json(new { success = false, message = "Only Admin can approve requests" });
+                }
+
+                var employeeRequest = await _context.EmployeeRequests
+                    .FirstOrDefaultAsync(r => r.RequestId == request.RequestId);
+
+                if (employeeRequest == null)
+                {
+                    return Json(new { success = false, message = "Request not found" });
+                }
+
+                var admin = await _userManager.GetUserAsync(User);
+
+                employeeRequest.Status = RequestStatus.Approved;
+                employeeRequest.ApprovedAt = DateTime.UtcNow;
+                employeeRequest.ApprovedByUserId = admin?.Id;
+                employeeRequest.ApprovedByName = admin?.FullName;
+
+                _context.EmployeeRequests.Update(employeeRequest);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Employee request {request.RequestId} approved by {admin?.Email} at {DateTime.UtcNow}");
+
+                return Json(new { success = true, message = "Request approved successfully", status = "APPROVED" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error approving employee request");
+                return Json(new { success = false, message = "An error occurred while approving the request" });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> CompleteEmployeeRequestAjax([FromBody] EmployeeRequestActionRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.RequestId))
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            try
+            {
+                if (!User.IsInRole("Admin"))
+                {
+                    return Json(new { success = false, message = "Only Admin can complete requests" });
+                }
+
+                var employeeRequest = await _context.EmployeeRequests
+                    .FirstOrDefaultAsync(r => r.RequestId == request.RequestId);
+
+                if (employeeRequest == null)
+                {
+                    return Json(new { success = false, message = "Request not found" });
+                }
+
+                var admin = await _userManager.GetUserAsync(User);
+
+                employeeRequest.Status = RequestStatus.Completed;
+                employeeRequest.CompletedAt = DateTime.UtcNow;
+                employeeRequest.CompletedByUserId = admin?.Id;
+                employeeRequest.CompletedByName = admin?.FullName;
+
+                _context.EmployeeRequests.Update(employeeRequest);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Employee request {request.RequestId} completed by {admin?.Email} at {DateTime.UtcNow}");
+
+                return Json(new { success = true, message = "Request completed successfully", status = "COMPLETED" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing employee request");
+                return Json(new { success = false, message = "An error occurred while completing the request" });
+            }
+        }
+
+        public class ProcessActionRequest
+        {
+            public string? ProcessId { get; set; }
+            public string? Status { get; set; }
+        }
+
+        public class EmployeeRequestActionRequest
+        {
+            public string? RequestId { get; set; }
+            public string? Status { get; set; }
+        }
+    }
+}

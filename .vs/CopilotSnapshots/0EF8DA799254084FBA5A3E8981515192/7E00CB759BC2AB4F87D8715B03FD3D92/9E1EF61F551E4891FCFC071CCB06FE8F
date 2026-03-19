@@ -1,0 +1,210 @@
+﻿@model List<Employee>
+@using CVM_FinalProject.Models
+@{
+    ViewData["Title"] = "Employee Management";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Employees</h2>
+            <p>Manage employees and departmental assignments</p>
+        </div>
+        <div class="d-flex gap-2">
+            <form method="post" asp-action="QuickSetupEmployees" style="display:inline;">
+                <button type="submit" class="btn btn-success" title="Quick setup: Creates demo departments and employees">
+                    <i class="fas fa-magic me-1"></i>Quick Setup (Demo)
+                </button>
+            </form>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignEmployeeModal">
+                <i class="fas fa-plus me-1"></i>Assign Employee
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Employee Modal -->
+<div class="modal fade" id="assignEmployeeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Assign Employee to Department
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-action="AssignEmployee">
+                <div class="modal-body">
+                    <!-- User Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">User <span class="text-danger">*</span></label>
+                        <select class="form-select" name="userId" id="userSelect" required>
+                            <option value="">-- Select User --</option>
+                            @{
+                                var users = ViewBag.AvailableUsers as List<ApplicationUser>;
+                                if (users != null && users.Count > 0)
+                                {
+                                    foreach (var user in users.OrderBy(u => u.FirstName).ThenBy(u => u.LastName))
+                                    {
+                                        <option value="@user.Id">
+                                            @(user.FullName ?? user.Email) (@user.Email)
+                                        </option>
+                                    }
+                                }
+                                else
+                                {
+                                    <option disabled value="">No users available - Please register users first</option>
+                                }
+                            }
+                        </select>
+                        <small class="form-text text-muted d-block mt-1">Users not yet assigned as employees</small>
+                    </div>
+
+                    <!-- Department Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Department <span class="text-danger">*</span></label>
+                        <select class="form-select" name="departmentId" id="departmentSelect" required>
+                            <option value="">-- Select Department --</option>
+                            @{
+                                var departments = ViewBag.AvailableDepartments as List<Department>;
+                                if (departments != null && departments.Count > 0)
+                                {
+                                    foreach (var dept in departments.OrderBy(d => d.DepartmentName))
+                                    {
+                                        <option value="@dept.DepartmentId">
+                                            @dept.DepartmentName
+                                        </option>
+                                    }
+                                }
+                                else
+                                {
+                                    <option disabled value="">No departments available - Please create departments first</option>
+                                }
+                            }
+                        </select>
+                        <small class="form-text text-muted d-block mt-1">Select the department for this employee</small>
+                    </div>
+
+                    <!-- Position -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Position <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="position" placeholder="e.g., Senior Developer, HR Manager" required>
+                        <small class="form-text text-muted d-block mt-1">Employee's job title or position</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-check me-2"></i>Assign Employee
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Employees Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="data-table">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Position</th>
+                            <th>Status</th>
+                            <th>Hire Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var emp in Model)
+                            {
+                                <tr>
+                                    <td><strong>@emp.User?.FullName</strong></td>
+                                    <td>@emp.User?.Email</td>
+                                    <td>@emp.Department?.DepartmentName</td>
+                                    <td>@emp.Position</td>
+                                    <td>
+                                        <span class="badge bg-@(emp.EmployeeStatus == "Active" ? "success" : "secondary")">
+                                            @emp.EmployeeStatus
+                                        </span>
+                                    </td>
+                                    <td>@emp.DateHired?.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox me-2"></i>No employees found
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Bootstrap tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Validate form before submission
+            const form = document.querySelector('#assignEmployeeModal form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const userSelect = document.getElementById('userSelect');
+                    const deptSelect = document.getElementById('departmentSelect');
+                    const positionInput = form.querySelector('input[name="position"]');
+
+                    if (!userSelect.value) {
+                        e.preventDefault();
+                        alert('Please select a user');
+                        return false;
+                    }
+                    if (!deptSelect.value) {
+                        e.preventDefault();
+                        alert('Please select a department');
+                        return false;
+                    }
+                    if (!positionInput.value.trim()) {
+                        e.preventDefault();
+                        alert('Please enter a position');
+                        return false;
+                    }
+                });
+            }
+        });
+    </script>
+}
+

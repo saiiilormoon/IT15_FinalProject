@@ -1,0 +1,105 @@
+﻿using CVM_FinalProject.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Data
+{
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        // Operational Processes
+        public DbSet<OperationalProcess> OperationalProcesses { get; set; }
+
+        // Employee Requests
+        public DbSet<EmployeeRequest> EmployeeRequests { get; set; }
+
+        // Roles
+        public DbSet<Role> Roles { get; set; }
+
+        // Departments
+        public DbSet<Department> Departments { get; set; }
+
+        // Employees
+        public DbSet<Employee> Employees { get; set; }
+
+        // Performance Records
+        public DbSet<PerformanceRecord> PerformanceRecords { get; set; }
+
+        // Reports
+        public DbSet<Report> Reports { get; set; }
+
+        // Budget
+        public DbSet<Budget> Budgets { get; set; }
+
+        // Audit Logs
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
+        // System Configuration
+        public DbSet<SystemConfiguration> SystemConfigurations { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Configure foreign keys and relationships
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.Department)
+                .WithMany(d => d.Employees)
+                .HasForeignKey(e => e.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PerformanceRecord>()
+                .HasOne(p => p.Employee)
+                .WithMany(e => e.PerformanceRecords)
+                .HasForeignKey(p => p.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Report>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.GeneratedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Budget>()
+                .HasOne(b => b.Department)
+                .WithMany(d => d.Budgets)
+                .HasForeignKey(b => b.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasOne(a => a.Role)
+                .WithMany(r => r.AuditLogs)
+                .HasForeignKey(a => a.RoleId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Configure Budget decimal properties with proper precision and scale
+            modelBuilder.Entity<Budget>()
+                .Property(b => b.AllocatedAmount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Budget>()
+                .Property(b => b.UsedAmount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Budget>()
+                .Property(b => b.RemainingAmount)
+                .HasColumnType("decimal(18,2)");
+        }
+    }
+}

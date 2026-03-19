@@ -1,0 +1,543 @@
+using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using CVM_FinalProject.Models.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Controllers
+{
+    [Authorize(Roles = "SuperAdmin,Admin")]
+    public class AdminController : Controller
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly ILogger<AdminController> _logger;
+        private readonly ApplicationDbContext _context;
+
+        public record IdDto(string id) { }
+
+        public AdminController(
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager,
+            ILogger<AdminController> logger,
+            ApplicationDbContext context)
+        {
+            _userManager = userManager;
+            _roleManager = roleManager;
+            _logger = logger;
+            _context = context;
+        }
+
+        private async Task SetUserViewBagAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserEmail = user?.Email ?? "admin@cvm.com";
+            ViewBag.UserName = user?.FirstName ?? "Admin";
+            ViewBag.FullName = user?.FullName ?? "Administrator";
+
+            if (user == null) return;
+            var roles = await _userManager.GetRolesAsync(user);
+            ViewBag.UserRole = roles.FirstOrDefault() ?? "Admin";
+            ViewBag.UserRoles = roles;
+        }
+
+        // GET: Admin/Users
+        public async Task<IActionResult> Users()
+        {
+            await SetUserViewBagAsync();
+
+            var allUsers = await _userManager.Users.ToListAsync();
+            var userViewModels = new List<UserManagementViewModel>();
+            var archivedViewModels = new List<UserManagementViewModel>();
+
+            foreach (var user in allUsers)
+            {
+                var userRoles = await _userManager.GetRolesAsync(user);
+                var userVm = new UserManagementViewModel
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email ?? "",
+                    Role = userRoles.FirstOrDefault() ?? "Employee",
+                    IsApproved = user.IsApproved,
+                    EmailConfirmed = user.EmailConfirmed,
+                    CreatedAt = user.CreatedAt,
+                    IsArchived = user.IsArchived,
+                    ArchivedAt = user.ArchivedAt,
+                    ArchivedBy = user.ArchivedBy
+                };
+
+                if (user.IsArchived)
+                {
+                    archivedViewModels.Add(userVm);
+                }
+                else
+                {
+                    userViewModels.Add(userVm);
+                }
+            }
+
+            var activeUsers = userViewModels.Where(u => !u.IsArchived).ToList();
+            var roleCounts = activeUsers
+                .GroupBy(u => u.Role)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var viewModel = new UserManagementPageViewModel
+            {
+                Users = userViewModels.OrderByDescending(u => u.CreatedAt).ToList(),
+                ArchivedUsers = archivedViewModels.OrderByDescending(u => u.ArchivedAt).ToList(),
+                RoleCounts = roleCounts,
+                TotalUsers = allUsers.Count,
+                ActiveUsers = userViewModels.Count(u => u.IsApproved && !u.IsArchived),
+                PendingUsers = userViewModels.Count(u => !u.IsApproved && !u.IsArchived),
+                ArchivedUsersCount = archivedViewModels.Count,
+                NewUsersThisMonth = userViewModels.Count(u => u.CreatedAt.Month == DateTime.Now.Month && u.CreatedAt.Year == DateTime.Now.Year)
+            };
+
+            return View(viewModel);
+        }
+
+        // POST: Admin/CreateUser
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateUser(CreateUserViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = new ApplicationUser
+                {
+                    UserName = model.Email,
+                    Email = model.Email,
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    EmailConfirmed = true,
+                    IsApproved = model.IsApproved,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var result = await _userManager.CreateAsync(user, model.Password);
+
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(user, model.Role);
+                    TempData["Success"] = $"User {model.Email} created successfully!";
+                    _logger.LogInformation($"Admin created new user: {model.Email} with role: {model.Role}");
+                }
+                else
+                {
+                    TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+                }
+            }
+
+            return RedirectToAction(nameof(Users));
+        }
+
+        // POST: Admin/UpdateUser
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateUser(EditUserViewModel model)
+        {
+            var user = await _userManager.FindByIdAsync(model.Id);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            // Prevent modifying SuperAdmin account
+            var currentRolesOfUser = await _userManager.GetRolesAsync(user);
+            var roleOfUser = currentRolesOfUser.FirstOrDefault() ?? "Employee";
+            if (roleOfUser == "SuperAdmin")
+            {
+                TempData["Error"] = "SuperAdmin account is permanent and cannot be modified.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            user.FirstName = model.FirstName;
+            user.LastName = model.LastName;
+            user.IsApproved = model.IsApproved;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                // Update role - prevent changing role to or from SuperAdmin
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                if (currentRoles.Contains("SuperAdmin") || model.Role == "SuperAdmin")
+                {
+                    // Do not allow assigning or removing SuperAdmin via UI
+                    TempData["Error"] = "SuperAdmin role cannot be assigned or changed via this interface.";
+                    return RedirectToAction(nameof(Users));
+                }
+
+                await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                await _userManager.AddToRoleAsync(user, model.Role);
+
+                TempData["Success"] = $"User {user.Email} updated successfully!";
+                _logger.LogInformation($"Admin updated user: {user.Email}");
+            }
+            else
+            {
+                TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+
+            return RedirectToAction(nameof(Users));
+        }
+
+        // POST: Admin/DeleteUser - Soft delete (moves to archive)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            // Get the user's role
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var userRole = userRoles.FirstOrDefault() ?? "Employee";
+
+            // Prevent deleting SuperAdmin accounts (PERMANENT status)
+            if (userRole == "SuperAdmin")
+            {
+                TempData["Error"] = "SuperAdmin accounts cannot be deleted. They have PERMANENT status.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            // Prevent self-deletion
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser?.Id == id)
+            {
+                TempData["Error"] = "You cannot delete your own account.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            // Soft delete - move to archive
+            user.IsArchived = true;
+            user.ArchivedAt = DateTime.UtcNow;
+            user.ArchivedBy = currentUser?.Id;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"User {user.Email} has been deleted and moved to Archive.";
+                _logger.LogInformation($"Admin soft-deleted user: {user.Email}");
+            }
+            else
+            {
+                TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+
+            return RedirectToAction(nameof(Users));
+        }
+
+        // POST: Admin/PermanentDeleteUser - Only SuperAdmin can permanently delete from archive
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<IActionResult> PermanentDeleteUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction(nameof(ArchivedUsers));
+            }
+
+            // Get the user's role
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var userRole = userRoles.FirstOrDefault() ?? "Employee";
+
+            // Prevent deleting SuperAdmin accounts
+            if (userRole == "SuperAdmin")
+            {
+                TempData["Error"] = "SuperAdmin accounts cannot be permanently deleted.";
+                return RedirectToAction(nameof(ArchivedUsers));
+            }
+
+            var result = await _userManager.DeleteAsync(user);
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"User {user.Email} has been permanently deleted.";
+                _logger.LogInformation($"SuperAdmin permanently deleted user: {user.Email}");
+            }
+            else
+            {
+                TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+
+            return RedirectToAction(nameof(ArchivedUsers));
+        }
+
+        // POST: Admin/ApproveUser
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction(nameof(PendingApprovals));
+            }
+
+            // Approve and confirm email (so user can login)
+            user.IsApproved = true;
+            user.EmailConfirmed = true;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"User {user.Email} has been approved and can now login!";
+                _logger.LogInformation($"Admin approved user: {user.Email}");
+            }
+            else
+            {
+                TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+
+            return RedirectToAction(nameof(PendingApprovals));
+        }
+
+        // POST: Admin/ApproveUserAjax
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveUserAjax([FromBody] IdDto data)
+        {
+            var id = data?.id;
+            if (string.IsNullOrEmpty(id)) return Json(new { success = false, message = "Invalid id." });
+
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "User not found." });
+            }
+
+            // Prevent approving SuperAdmin via this endpoint
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Contains("SuperAdmin"))
+            {
+                return Json(new { success = false, message = "Cannot modify SuperAdmin." });
+            }
+
+            user.IsApproved = true;
+            user.EmailConfirmed = true;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"User {user.Email} approved via AJAX.");
+                return Json(new { success = true });
+            }
+
+            return Json(new { success = false, message = string.Join(", ", result.Errors.Select(e => e.Description)) });
+        }
+
+        // POST: Admin/RejectUser
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction(nameof(PendingApprovals));
+            }
+
+            var result = await _userManager.DeleteAsync(user);
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"User {user.Email} has been rejected and removed.";
+                _logger.LogInformation($"Admin rejected user: {user.Email}");
+            }
+
+            return RedirectToAction(nameof(PendingApprovals));
+        }
+
+        // POST: Admin/ArchiveUser - Only SuperAdmin can archive
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<IActionResult> ArchiveUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            // Get the user's role
+            var userRoles = await _userManager.GetRolesAsync(user);
+            var userRole = userRoles.FirstOrDefault() ?? "Employee";
+
+            // Prevent archiving SuperAdmin accounts (PERMANENT status)
+            if (userRole == "SuperAdmin")
+            {
+                TempData["Error"] = "SuperAdmin accounts cannot be archived. They have PERMANENT status.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            // Prevent self-archiving
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser?.Id == id)
+            {
+                TempData["Error"] = "You cannot archive your own account.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            // Archive the user
+            user.IsArchived = true;
+            user.ArchivedAt = DateTime.UtcNow;
+            user.ArchivedBy = currentUser?.Id;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"User {user.Email} has been archived (deactivated).";
+                _logger.LogInformation($"SuperAdmin archived user: {user.Email}");
+            }
+            else
+            {
+                TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+
+            return RedirectToAction(nameof(Users));
+        }
+
+        // POST: Admin/RestoreUser - Only SuperAdmin can restore
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<IActionResult> RestoreUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction(nameof(ArchivedUsers));
+            }
+
+            // Restore the user
+            user.IsArchived = false;
+            user.ArchivedAt = null;
+            user.ArchivedBy = null;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"User {user.Email} has been restored (activated).";
+                _logger.LogInformation($"SuperAdmin restored user: {user.Email}");
+            }
+            else
+            {
+                TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+
+            return RedirectToAction(nameof(ArchivedUsers));
+        }
+
+        // GET: Admin/ArchivedUsers - Only SuperAdmin can view
+        [Authorize(Roles = "SuperAdmin")]
+        public async Task<IActionResult> ArchivedUsers()
+        {
+            await SetUserViewBagAsync();
+
+            var archivedUsers = await _userManager.Users
+                .Where(u => u.IsArchived)
+                .ToListAsync();
+
+            var userViewModels = new List<UserManagementViewModel>();
+
+            foreach (var user in archivedUsers)
+            {
+                var userRoles = await _userManager.GetRolesAsync(user);
+                userViewModels.Add(new UserManagementViewModel
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email ?? "",
+                    Role = userRoles.FirstOrDefault() ?? "Employee",
+                    IsApproved = user.IsApproved,
+                    EmailConfirmed = user.EmailConfirmed,
+                    CreatedAt = user.CreatedAt,
+                    IsArchived = user.IsArchived,
+                    ArchivedAt = user.ArchivedAt,
+                    ArchivedBy = user.ArchivedBy
+                });
+            }
+
+            return View(userViewModels.OrderByDescending(u => u.ArchivedAt).ToList());
+        }
+
+        // GET: Admin/PendingApprovals
+        public async Task<IActionResult> PendingApprovals()
+        {
+            await SetUserViewBagAsync();
+
+            var pendingUsers = await _userManager.Users
+                .Where(u => !u.IsApproved)
+                .ToListAsync();
+
+            var userViewModels = new List<UserManagementViewModel>();
+
+            foreach (var user in pendingUsers)
+            {
+                var userRoles = await _userManager.GetRolesAsync(user);
+                userViewModels.Add(new UserManagementViewModel
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email ?? "",
+                    Role = userRoles.FirstOrDefault() ?? "Employee",
+                    IsApproved = user.IsApproved,
+                    EmailConfirmed = user.EmailConfirmed,
+                    CreatedAt = user.CreatedAt
+                });
+            }
+
+            return View(userViewModels.OrderByDescending(u => u.CreatedAt).ToList());
+        }
+
+        // GET: Admin/Logs
+        public async Task<IActionResult> Logs()
+        {
+            await SetUserViewBagAsync();
+
+            var auditLogs = await _context.AuditLogs
+                .Include(a => a.User)
+                .OrderByDescending(a => a.AssignedAt)
+                .Take(200)
+                .ToListAsync();
+
+            var logs = auditLogs.Select((a, i) => new SystemLogViewModel
+            {
+                Id = a.AuditId,
+                Action = a.Action,
+                UserId = a.UserId,
+                UserName = a.User?.Email ?? a.UserId,
+                Details = a.Action,
+                IpAddress = a.IPAddress ?? "N/A",
+                Timestamp = a.AssignedAt,
+                LogLevel = a.Action.Contains("Delete") || a.Action.Contains("Reject") ? "Warning" :
+                           a.Action.Contains("Error") || a.Action.Contains("Failed") ? "Error" : "Info"
+            }).ToList();
+
+            return View(logs);
+        }
+    }
+}

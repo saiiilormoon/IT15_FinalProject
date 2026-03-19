@@ -1,0 +1,199 @@
+﻿using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Services
+{
+    /// <summary>
+    /// Service for managing departments
+    /// </summary>
+    public class DepartmentService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<DepartmentService> _logger;
+
+        public DepartmentService(ApplicationDbContext context, ILogger<DepartmentService> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        // Get all departments
+        public async Task<List<Department>> GetAllDepartmentsAsync()
+        {
+            try
+            {
+                return await _context.Departments
+                    .OrderBy(d => d.DepartmentName)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all departments");
+                throw;
+            }
+        }
+
+        // Get department by ID with employees
+        public async Task<Department?> GetDepartmentWithEmployeesAsync(int departmentId)
+        {
+            try
+            {
+                return await _context.Departments
+                    .Include(d => d.Employees)
+                    .FirstOrDefaultAsync(d => d.DepartmentId == departmentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting department with employees");
+                throw;
+            }
+        }
+
+        // Create new department
+        public async Task<Department> CreateDepartmentAsync(string name, string status)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(name))
+                    throw new ArgumentException("Department name is required");
+
+                var dept = new Department
+                {
+                    DepartmentName = name.Trim(),
+                    Status = status ?? "Active"
+                };
+
+                _context.Departments.Add(dept);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Department created: {name}");
+                return dept;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating department");
+                throw;
+            }
+        }
+
+        // Update department
+        public async Task<Department> UpdateDepartmentAsync(int departmentId, string name, string status)
+        {
+            try
+            {
+                var dept = await _context.Departments.FindAsync(departmentId);
+                if (dept == null)
+                    throw new InvalidOperationException("Department not found");
+
+                dept.DepartmentName = name?.Trim() ?? dept.DepartmentName;
+                dept.Status = status ?? dept.Status;
+
+                _context.Departments.Update(dept);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Department updated: {departmentId}");
+                return dept;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating department");
+                throw;
+            }
+        }
+
+        // Get employees in department
+        public async Task<List<Employee>> GetEmployeesInDepartmentAsync(int departmentId)
+        {
+            try
+            {
+                return await _context.Employees
+                    .Where(e => e.DepartmentId == departmentId)
+                    .Include(e => e.User)
+                    .OrderBy(e => e.User!.FirstName)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting employees in department");
+                throw;
+            }
+        }
+
+        // Get department statistics
+        public async Task<DepartmentStatsViewModel> GetDepartmentStatsAsync(int departmentId)
+        {
+            try
+            {
+                var dept = await _context.Departments
+                    .Include(d => d.Employees)
+                    .Include(d => d.Budgets)
+                    .FirstOrDefaultAsync(d => d.DepartmentId == departmentId);
+
+                if (dept == null)
+                    throw new InvalidOperationException("Department not found");
+
+                var employees = await _context.Employees
+                    .Where(e => e.DepartmentId == departmentId)
+                    .ToListAsync();
+
+                var budget = dept.Budgets?.FirstOrDefault();
+
+                return new DepartmentStatsViewModel
+                {
+                    DepartmentId = departmentId,
+                    DepartmentName = dept.DepartmentName,
+                    Status = dept.Status,
+                    TotalEmployees = employees.Count,
+                    ActiveEmployees = employees.Count(e => e.EmployeeStatus == "Active"),
+                    AllocatedBudget = budget?.AllocatedAmount ?? 0,
+                    UsedBudget = budget?.UsedAmount ?? 0,
+                    RemainingBudget = budget?.RemainingAmount ?? 0,
+                    BudgetPercentageUsed = budget != null && budget.AllocatedAmount > 0 
+                        ? (double)((budget.UsedAmount / budget.AllocatedAmount) * 100)
+                        : 0
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting department stats");
+                throw;
+            }
+        }
+
+        // Delete department
+        public async Task DeleteDepartmentAsync(int departmentId)
+        {
+            try
+            {
+                var dept = await _context.Departments.FindAsync(departmentId);
+                if (dept == null)
+                    throw new InvalidOperationException("Department not found");
+
+                _context.Departments.Remove(dept);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Department deleted: {departmentId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting department");
+                throw;
+            }
+        }
+    }
+
+    // View model for department statistics
+    public class DepartmentStatsViewModel
+    {
+        public int DepartmentId { get; set; }
+        public string DepartmentName { get; set; } = string.Empty;
+        public string? Status { get; set; }
+        public int TotalEmployees { get; set; }
+        public int ActiveEmployees { get; set; }
+        public decimal AllocatedBudget { get; set; }
+        public decimal UsedBudget { get; set; }
+        public decimal RemainingBudget { get; set; }
+        public double BudgetPercentageUsed { get; set; }
+    }
+}

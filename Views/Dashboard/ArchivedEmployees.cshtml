@@ -1,0 +1,104 @@
+@model List<Employee>
+@using CVM_FinalProject.Models
+@{
+    ViewData["Title"] = "Archived Employees";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Archived Employees</h2>
+            <p>View and restore archived employees</p>
+        </div>
+        <a href="@Url.Action("Index")" class="btn btn-primary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Active Employees
+        </a>
+    </div>
+</div>
+
+<!-- Alert Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Archived Employees Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="data-table">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Position</th>
+                            <th>Status</th>
+                            <th>Archived Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var emp in Model)
+                            {
+                                <tr class="table-secondary">
+                                    <td><strong>@emp.User?.FullName</strong></td>
+                                    <td>@emp.User?.Email</td>
+                                    <td>@emp.Department?.DepartmentName</td>
+                                    <td>@emp.Position</td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            Archived
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (emp.ArchiveDate.HasValue)
+                                        {
+                                            @emp.ArchiveDate.Value.ToString("MMM dd, yyyy HH:mm")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <form method="post" asp-action="RestoreEmployee" style="display:inline;">
+                                            <input type="hidden" name="employeeId" value="@emp.EmployeeId" />
+                                            <button type="submit" class="btn btn-sm btn-success" 
+                                                    onclick="return confirm('Are you sure you want to restore this employee?')"
+                                                    title="Restore this employee">
+                                                <i class="fas fa-redo me-1"></i>Restore
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-archive me-2"></i>No archived employees found
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,233 @@
+﻿using CVM_FinalProject.Models;
+using CVM_FinalProject.Models.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Controllers
+{
+    [Authorize]
+    public class DashboardController : Controller
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<DashboardController> _logger;
+
+        public DashboardController(UserManager<ApplicationUser> userManager, ILogger<DashboardController> logger)
+        {
+            _userManager = userManager;
+            _logger = logger;
+        }
+
+        private async Task SetUserViewBagAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserEmail = user?.Email ?? "user@example.com";
+            ViewBag.UserName = user?.FirstName ?? "User";
+            ViewBag.FullName = user?.FullName ?? "User";
+            ViewBag.UserLastName = user?.LastName ?? "";
+            ViewBag.UserPhone = user?.PhoneNumber ?? "";
+            
+            // Get the user's role(s)
+            var roles = await _userManager.GetRolesAsync(user!);
+            ViewBag.UserRole = roles.FirstOrDefault() ?? "Employee";
+            ViewBag.UserRoles = roles;
+        }
+
+        // Model used to accept profile update payload from client
+        public class ProfileUpdateModel
+        {
+            public string? FirstName { get; set; }
+            public string? LastName { get; set; }
+            public string? PhoneNumber { get; set; }
+            public string? Role { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfile([FromBody] ProfileUpdateModel model)
+        {
+            if (model == null)
+            {
+                return Json(new { success = false, message = "Invalid request" });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "User not found" });
+            }
+
+            // Update basic profile fields
+            if (!string.IsNullOrWhiteSpace(model.FirstName)) user.FirstName = model.FirstName.Trim();
+            if (!string.IsNullOrWhiteSpace(model.LastName)) user.LastName = model.LastName.Trim();
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                var err = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                return Json(new { success = false, message = err });
+            }
+
+            // Update phone separately (uses identity store)
+            if (model.PhoneNumber != null)
+            {
+                var phoneResult = await _userManager.SetPhoneNumberAsync(user, model.PhoneNumber.Trim());
+                if (!phoneResult.Succeeded)
+                {
+                    var err = string.Join("; ", phoneResult.Errors.Select(e => e.Description));
+                    return Json(new { success = false, message = err });
+                }
+            }
+
+            // Role change (only allowed for Admins/SuperAdmins) but do NOT allow changing SuperAdmin role
+            if (!string.IsNullOrWhiteSpace(model.Role) && (User.IsInRole("Admin") || User.IsInRole("SuperAdmin")))
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                // If the user currently has SuperAdmin role, do not allow changing it
+                if (currentRoles.Contains("SuperAdmin"))
+                {
+                    // ignore any requested role changes for SuperAdmin accounts
+                    goto SkipRoleChange;
+                }
+                var newRole = model.Role.Trim();
+                if (!currentRoles.Contains(newRole))
+                {
+                    // Remove existing roles and add the new one
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                    if (!removeResult.Succeeded)
+                    {
+                        var err = string.Join("; ", removeResult.Errors.Select(e => e.Description));
+                        return Json(new { success = false, message = err });
+                    }
+
+                    var addResult = await _userManager.AddToRoleAsync(user, newRole);
+                    if (!addResult.Succeeded)
+                    {
+                        var err = string.Join("; ", addResult.Errors.Select(e => e.Description));
+                        return Json(new { success = false, message = err });
+                    }
+                }
+            }
+            SkipRoleChange:;
+
+            // Refresh viewbag values
+            await SetUserViewBagAsync();
+
+            return Json(new { success = true, message = "Profile updated successfully", fullName = ViewBag.FullName });
+        }
+
+        // Check if current user is approved
+        private async Task<bool> IsUserApprovedAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            return user?.IsApproved ?? false;
+        }
+
+        public async Task<IActionResult> Index()
+        {
+            // Check if user is approved
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> PendingApproval()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            ViewBag.UserName = user?.FirstName ?? "User";
+            ViewBag.UserEmail = user?.Email ?? "";
+            return View();
+        }
+
+        public async Task<IActionResult> Operations()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> Reports()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> Performance()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+
+            // Get all users from database
+            var allUsers = await _userManager.Users.ToListAsync();
+            var userViewModels = new List<UserPerformanceViewModel>();
+
+            foreach (var user in allUsers)
+            {
+                var userRoles = await _userManager.GetRolesAsync(user);
+                userViewModels.Add(new UserPerformanceViewModel
+                {
+                    Id = user.Id,
+                    FullName = user.FullName,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email ?? "",
+                    Role = userRoles.FirstOrDefault() ?? "Employee",
+                    IsApproved = user.IsApproved,
+                    CreatedAt = user.CreatedAt
+                });
+            }
+
+            // Calculate role counts
+            var roleCounts = userViewModels
+                .GroupBy(u => u.Role)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var viewModel = new PerformancePageViewModel
+            {
+                Users = userViewModels.OrderBy(u => u.Role).ThenBy(u => u.FullName).ToList(),
+                RoleCounts = roleCounts,
+                TotalUsers = userViewModels.Count,
+                ApprovedUsers = userViewModels.Count(u => u.IsApproved),
+                PendingUsers = userViewModels.Count(u => !u.IsApproved)
+            };
+
+            return View(viewModel);
+        }
+
+        public async Task<IActionResult> Budget()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            return View();
+        }
+
+        public async Task<IActionResult> Settings()
+        {
+            if (!await IsUserApprovedAsync())
+            {
+                return RedirectToAction("PendingApproval");
+            }
+            await SetUserViewBagAsync();
+            return View();
+        }
+    }
+}

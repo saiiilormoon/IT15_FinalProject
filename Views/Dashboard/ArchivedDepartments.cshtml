@@ -1,0 +1,171 @@
+@model List<Department>
+@using CVM_FinalProject.Models
+@{
+    ViewData["Title"] = "Archived Departments";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Archived Departments</h2>
+            <p>View and manage archived departments</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="@Url.Action("Departments")" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Active
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Archived Departments Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="data-table">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Department Name</th>
+                            <th>Archived Date</th>
+                            <th>Archive Reason</th>
+                            <th>Employees</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var dept in Model)
+                            {
+                                <tr>
+                                    <td><strong>@dept.DepartmentName</strong></td>
+                                    <td>
+                                        @if (dept.ArchivedAt.HasValue)
+                                        {
+                                            <span>@dept.ArchivedAt.Value.ToString("MMM dd, yyyy")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(dept.ArchiveReason))
+                                        {
+                                            <span>@dept.ArchiveReason</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>@dept.Employees?.Count ?? 0</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#restoreDepartmentModal" onclick="setRestoreDepartmentId(@dept.DepartmentId, '@dept.DepartmentName')">
+                                            <i class="fas fa-undo"></i> Restore
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteDepartmentModal" onclick="setDeleteDepartmentId(@dept.DepartmentId, '@dept.DepartmentName')">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox me-2"></i>No archived departments found
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Restore Department Modal -->
+<div class="modal fade" id="restoreDepartmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Restore Department</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-action="RestoreDepartment" id="restoreForm">
+                <div class="modal-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Restore:</strong> You are about to restore department <span id="restoreDepartmentNameDisplay" style="font-weight: bold;"></span>.
+                    </div>
+                    <p>This will move the department back to the active departments list.</p>
+                    <input type="hidden" name="id" id="restoreDepartmentId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Restore Department</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Department Modal -->
+<div class="modal fade" id="deleteDepartmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Permanently Delete Department</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-action="PermanentlyDeleteDepartment" id="deleteForm">
+                <div class="modal-body">
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> You are about to permanently delete department <span id="deleteDepartmentNameDisplay" style="font-weight: bold;"></span>.
+                    </div>
+                    <p><strong>This action CANNOT be undone.</strong> Make sure this department has no assigned employees before deleting.</p>
+                    <input type="hidden" name="id" id="deleteDepartmentId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Permanently Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function setRestoreDepartmentId(departmentId, departmentName) {
+            document.getElementById('restoreDepartmentId').value = departmentId;
+            document.getElementById('restoreDepartmentNameDisplay').textContent = departmentName;
+        }
+
+        function setDeleteDepartmentId(departmentId, departmentName) {
+            document.getElementById('deleteDepartmentId').value = departmentId;
+            document.getElementById('deleteDepartmentNameDisplay').textContent = departmentName;
+        }
+    </script>
+}

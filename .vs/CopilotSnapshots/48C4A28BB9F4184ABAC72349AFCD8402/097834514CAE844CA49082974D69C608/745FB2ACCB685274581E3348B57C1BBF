@@ -1,0 +1,1307 @@
+﻿@{
+    ViewData["Title"] = "Operational Processing";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+    var userRole = ViewBag.UserRole as string ?? "Employee";
+    var isAdmin = userRole == "Admin" || userRole == "SuperAdmin";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            @if (isAdmin)
+            {
+                <h2>Operational Processing & Reports</h2>
+                <p>Manage daily operations and generate operational reports.</p>
+            }
+            else if (userRole == "HR")
+            {
+                <h2>HR Requests & Reports</h2>
+                <p>Manage employee requests and generate HR reports.</p>
+            }
+            else if (userRole == "Accountant")
+            {
+                <h2>Financial Requests & Approvals</h2>
+                <p>Review and approve financial requests and expense reports.</p>
+            }
+            else if (userRole == "Auditor")
+            {
+                <h2>Audit Trail & Compliance</h2>
+                <p>View system audit logs and compliance records.</p>
+            }
+            else
+            {
+                <h2>My Requests & Submissions</h2>
+                <p>Track your submitted requests and their status.</p>
+            }
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            @if (isAdmin)
+            {
+                <a asp-action="ApprovedAndCompleted" class="btn btn-outline-info">
+                    <i class="fas fa-check-double me-1"></i>Approved & Completed
+                </a>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+                    <i class="fas fa-plus me-2"></i>New Process
+                </button>
+            }
+            else if (userRole == "HR")
+            {
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+                    <i class="fas fa-plus me-2"></i>New Request
+                </button>
+            }
+            else if (userRole == "Accountant")
+            {
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+                    <i class="fas fa-plus me-2"></i>New Approval
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards - Role Based -->
+<div class="row g-3 mb-4">
+    @if (isAdmin)
+    {
+        <!-- ADMIN: Operational Process KPIs -->
+        {
+            var allProcesses = (ViewBag.OperationalProcesses as List<CVM_FinalProject.Models.OperationalProcess>) ?? new List<CVM_FinalProject.Models.OperationalProcess>();
+            var activeCount = allProcesses.Count;
+            var pendingCount = allProcesses.Count(p => p.Status == CVM_FinalProject.Models.ProcessStatus.Pending);
+            var approvedCount = allProcesses.Count(p => p.Status == CVM_FinalProject.Models.ProcessStatus.Approved);
+            var completedThisMonth = allProcesses.Count(p => p.Status == CVM_FinalProject.Models.ProcessStatus.Completed && 
+                                                              p.CompletedAt.HasValue && 
+                                                              p.CompletedAt.Value.Month == DateTime.Now.Month &&
+                                                              p.CompletedAt.Value.Year == DateTime.Now.Year);
+        }
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h3>@pendingCount</h3>
+                <p>Pending Requests</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <h3>@completedThisMonth</h3>
+                <p>Completed This Month</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3>@approvedCount</h3>
+                <p>In Archive</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h3>@activeCount</h3>
+                <p>Total Processes</p>
+            </div>
+        </div>
+    }
+    else if (userRole == "HR")
+    {
+        <!-- HR: Employee Request KPIs -->
+        {
+            var hrRequests = (ViewBag.EmployeeRequests as List<dynamic>) ?? new List<dynamic>();
+            var pendingRequests = hrRequests.Count(r => r.Status == "Pending");
+            var approvedRequests = hrRequests.Count(r => r.Status == "Approved");
+            var rejectedRequests = hrRequests.Count(r => r.Status == "Rejected");
+            var totalRequests = hrRequests.Count;
+        }
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning text-dark">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <h3>@pendingRequests</h3>
+                <p>Pending Requests</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>@approvedRequests</h3>
+                <p>Approved</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-danger">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <h3>@rejectedRequests</h3>
+                <p>Rejected</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h3>@totalRequests</h3>
+                <p>Total Requests</p>
+            </div>
+        </div>
+    }
+    else if (userRole == "Accountant")
+    {
+        <!-- ACCOUNTANT: Financial Request KPIs -->
+        {
+            var finRequests = (ViewBag.FinancialRequests as List<dynamic>) ?? new List<dynamic>();
+            var pendingFin = finRequests.Count(r => r.Status == "Pending");
+            var approvedFin = finRequests.Count(r => r.Status == "Approved");
+            var totalAmount = finRequests.Sum(r => (decimal)r.Amount);
+            var approvedAmount = finRequests.Where(r => r.Status == "Approved").Sum(r => (decimal)r.Amount);
+        }
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning text-dark">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <h3>@pendingFin</h3>
+                <p>Pending Approvals</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>@approvedFin</h3>
+                <p>Approved</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-peso-sign"></i>
+                </div>
+                <h3>₱@totalAmount.ToString("N0")</h3>
+                <p>Total Amount</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-thumbs-up"></i>
+                </div>
+                <h3>₱@approvedAmount.ToString("N0")</h3>
+                <p>Approved Amount</p>
+            </div>
+        </div>
+    }
+    else if (userRole == "Auditor")
+    {
+        <!-- AUDITOR: Audit KPIs -->
+        {
+            var auditLogs = (ViewBag.AuditLogs as List<dynamic>) ?? new List<dynamic>();
+            var totalLogs = auditLogs.Count;
+            var createsCount = auditLogs.Count(l => l.Action == "CREATE");
+            var updatesCount = auditLogs.Count(l => l.Action == "UPDATE");
+            var deletesCount = auditLogs.Count(l => l.Action == "DELETE");
+        }
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h3>@totalLogs</h3>
+                <p>Total Audit Logs</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-plus-circle"></i>
+                </div>
+                <h3>@createsCount</h3>
+                <p>Creates</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning text-dark">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <h3>@updatesCount</h3>
+                <p>Updates</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-danger">
+                    <i class="fas fa-trash"></i>
+                </div>
+                <h3>@deletesCount</h3>
+                <p>Deletes</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- EMPLOYEE: Personal Request KPIs -->
+        {
+            var myRequests = (ViewBag.MyRequests as List<dynamic>) ?? new List<dynamic>();
+            var myPending = myRequests.Count(r => r.Status == "Pending");
+            var myApproved = myRequests.Count(r => r.Status == "Approved");
+            var myRejected = myRequests.Count(r => r.Status == "Rejected");
+            var myTotal = myRequests.Count;
+        }
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning text-dark">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <h3>@myPending</h3>
+                <p>Pending</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>@myApproved</h3>
+                <p>Approved</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-danger">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <h3>@myRejected</h3>
+                <p>Rejected</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h3>@myTotal</h3>
+                <p>Total Requests</p>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Quick Actions - Role Based -->
+<div class="row g-3 mb-4">
+    @if (isAdmin)
+    {
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+                <i class="fas fa-plus-circle"></i>
+                <span>New Process</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                <i class="fas fa-file-export"></i>
+                <span>Generate Report</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" onclick="filterByStatus('pending')">
+                <i class="fas fa-hourglass-half"></i>
+                <span>View Pending</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" onclick="exportData()">
+                <i class="fas fa-download"></i>
+                <span>Export Data</span>
+            </div>
+        </div>
+    }
+    else if (userRole == "HR")
+    {
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+                <i class="fas fa-plus-circle"></i>
+                <span>New Request</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                <i class="fas fa-file-export"></i>
+                <span>Generate Report</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" onclick="filterPending()">
+                <i class="fas fa-filter"></i>
+                <span>View Pending</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" onclick="exportHRData()">
+                <i class="fas fa-download"></i>
+                <span>Export Data</span>
+            </div>
+        </div>
+    }
+    else if (userRole == "Accountant")
+    {
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                <i class="fas fa-file-export"></i>
+                <span>Generate Report</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" onclick="filterPending()">
+                <i class="fas fa-filter"></i>
+                <span>Pending Only</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn" onclick="exportFinancialData()">
+                <i class="fas fa-download"></i>
+                <span>Export Data</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-action-btn">
+                <i class="fas fa-print"></i>
+                <span>Print Report</span>
+            </div>
+        </div>
+    }
+    else if (userRole == "Auditor")
+    {
+        <div class="col-md-4 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                <i class="fas fa-file-export"></i>
+                <span>Generate Report</span>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="quick-action-btn" onclick="exportAuditData()">
+                <i class="fas fa-download"></i>
+                <span>Export Logs</span>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="quick-action-btn">
+                <i class="fas fa-search"></i>
+                <span>Search Logs</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="col-md-4 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#newProcessModal">
+                <i class="fas fa-plus-circle"></i>
+                <span>New Request</span>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                <i class="fas fa-file-export"></i>
+                <span>View Status</span>
+            </div>
+        </div>
+        <div class="col-md-4 col-6">
+            <div class="quick-action-btn" onclick="exportMyData()">
+                <i class="fas fa-download"></i>
+                <span>Export Data</span>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Filter and Search - Admin Only -->
+@if (isAdmin)
+{
+    <div class="chart-card mb-4">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Search</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" placeholder="Search processes..." id="searchInput" onkeyup="filterTable()">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Department</label>
+                <select class="form-select" id="deptFilter" onchange="filterTable()">
+                    <option value="">All Departments</option>
+                    <option value="HR">Human Resources</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Sales">Sales</option>
+                    <option value="IT">IT</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Status</label>
+                <select class="form-select" id="statusFilter" onchange="filterTable()">
+                    <option value="">All</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="COMPLETED">Completed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">&nbsp;</label>
+                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                    <i class="fas fa-redo me-1"></i>Reset
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Processes Table - Role Based View -->
+<div class="data-table">
+    @if (isAdmin)
+    {
+        <!-- ADMIN/SUPERADMIN: Show Operational Processes -->
+        @Html.AntiForgeryToken()
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Operational Processes</h5>
+            <span class="badge bg-primary" id="recordCount">Showing @(ViewBag.OperationalProcesses?.Count ?? 0) records</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="processTable">
+                <thead>
+                    <tr>
+                        <th>Process ID</th>
+                        <th>Process Name</th>
+                        <th>Department</th>
+                        <th>Assigned To</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ViewBag.OperationalProcesses != null && ViewBag.OperationalProcesses.Count > 0)
+                    {
+                        @foreach (var process in ViewBag.OperationalProcesses)
+                        {
+                            string statusClass = "bg-secondary";
+                            string statusText = process.Status.ToString();
+
+                            if (process.Status == CVM_FinalProject.Models.ProcessStatus.Pending)
+                            {
+                                statusClass = "bg-warning text-dark";
+                                statusText = "Pending";
+                            }
+                            else if (process.Status == CVM_FinalProject.Models.ProcessStatus.Approved || process.Status == CVM_FinalProject.Models.ProcessStatus.Active)
+                            {
+                                statusClass = "bg-success";
+                                statusText = "Active";
+                            }
+                            else if (process.Status == CVM_FinalProject.Models.ProcessStatus.Completed)
+                            {
+                                statusClass = "bg-secondary";
+                                statusText = "Completed";
+                            }
+
+                            <tr data-process-id="@process.ProcessId" data-status="@process.Status">
+                                <td><span class="fw-semibold text-primary">#@process.ProcessId</span></td>
+                                <td>@process.Name</td>
+                                <td>@process.Department</td>
+                                <td>@process.AssignedTo</td>
+                                <td>@process.Priority</td>
+                                <td><span class="badge @statusClass">@statusText</span></td>
+                                <td>@process.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" title="View" onclick="viewProcess('@process.ProcessId', '@process.Name', '@process.Department', '@process.AssignedTo', '@statusText', '@process.CreatedAt.ToString("MMM dd, yyyy")')"><i class="fas fa-eye"></i></button>
+                                        <button class="btn btn-outline-secondary" title="Edit" onclick="openEditModal('@process.ProcessId', '@process.Name', '@process.Department', '@process.AssignedTo')"><i class="fas fa-edit"></i></button>
+                                        <button class="btn btn-outline-success" title="Approve" onclick="approveProcess('@process.ProcessId', this)"><i class="fas fa-check"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle me-2"></i>No pending processes.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else if (userRole == "HR")
+    {
+        <!-- HR: Show Employee Requests -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Employee Requests</h5>
+            <span class="badge bg-primary">Showing @(ViewBag.EmployeeRequests?.Count ?? 0) requests</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Employee</th>
+                        <th>Request Type</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Date Requested</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ViewBag.EmployeeRequests != null && ViewBag.EmployeeRequests.Count > 0)
+                    {
+                        @foreach (var request in ViewBag.EmployeeRequests)
+                        {
+                            <tr>
+                                <td><span class="fw-semibold text-primary">#@request.RequestId</span></td>
+                                <td>@request.EmployeeName</td>
+                                <td>@request.RequestType</td>
+                                <td>@request.Department</td>
+                                <td>
+                                    @{
+                                        string statusClass = "bg-secondary";
+                                        if (request.Status == "Pending") statusClass = "bg-warning text-dark";
+                                        else if (request.Status == "Approved") statusClass = "bg-success";
+                                        else if (request.Status == "Rejected") statusClass = "bg-danger";
+                                    }
+                                    <span class="badge @statusClass">@request.Status</span>
+                                </td>
+                                <td>@request.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" title="View" onclick="viewRequest('@request.RequestId', '@request.EmployeeName', '@request.RequestType', '@request.Status')"><i class="fas fa-eye"></i></button>
+                                        @if (request.Status == "Pending")
+                                        {
+                                            <button class="btn btn-outline-success" title="Approve" onclick="approveRequest('@request.RequestId')"><i class="fas fa-check"></i></button>
+                                            <button class="btn btn-outline-danger" title="Reject" onclick="rejectRequest('@request.RequestId')"><i class="fas fa-times"></i></button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle me-2"></i>No employee requests at this time.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else if (userRole == "Accountant")
+    {
+        <!-- ACCOUNTANT: Show Financial/Expense Requests -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Financial Requests & Approvals</h5>
+            <span class="badge bg-primary">Showing @(ViewBag.FinancialRequests?.Count ?? 0) requests</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Department</th>
+                        <th>Request Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ViewBag.FinancialRequests != null && ViewBag.FinancialRequests.Count > 0)
+                    {
+                        @foreach (var request in ViewBag.FinancialRequests)
+                        {
+                            <tr>
+                                <td><span class="fw-semibold text-primary">#@request.RequestId</span></td>
+                                <td>@request.Department</td>
+                                <td>@request.RequestType</td>
+                                <td>@request.Amount.ToString("N2")</td>
+                                <td>
+                                    @{
+                                        string statusClass = "bg-secondary";
+                                        if (request.Status == "Pending") statusClass = "bg-warning text-dark";
+                                        else if (request.Status == "Approved") statusClass = "bg-success";
+                                        else if (request.Status == "Rejected") statusClass = "bg-danger";
+                                    }
+                                    <span class="badge @statusClass">@request.Status</span>
+                                </td>
+                                <td>@request.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" title="View" onclick="viewFinancialRequest('@request.RequestId', '@request.Department', '₱@request.Amount.ToString("N2")', '@request.Status')"><i class="fas fa-eye"></i></button>
+                                        @if (request.Status == "Pending")
+                                        {
+                                            <button class="btn btn-outline-success" title="Approve" onclick="approveFinancial('@request.RequestId')"><i class="fas fa-check"></i></button>
+                                            <button class="btn btn-outline-danger" title="Reject" onclick="rejectFinancial('@request.RequestId')"><i class="fas fa-times"></i></button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle me-2"></i>No financial requests at this time.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else if (userRole == "Auditor")
+    {
+        <!-- AUDITOR: Show Audit Logs/Compliance Records -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Audit Logs & Compliance Records</h5>
+            <span class="badge bg-primary">Showing @(ViewBag.AuditLogs?.Count ?? 0) records</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Log ID</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Entity Type</th>
+                        <th>Department</th>
+                        <th>Timestamp</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ViewBag.AuditLogs != null && ViewBag.AuditLogs.Count > 0)
+                    {
+                        @foreach (var log in ViewBag.AuditLogs)
+                        {
+                            <tr>
+                                <td><span class="fw-semibold text-primary">#@log.LogId</span></td>
+                                <td>@log.UserName</td>
+                                <td>
+                                    @{
+                                        string actionBadgeClass = "bg-secondary";
+                                        if (log.Action == "CREATE") actionBadgeClass = "bg-info";
+                                        else if (log.Action == "UPDATE") actionBadgeClass = "bg-warning text-dark";
+                                        else if (log.Action == "DELETE") actionBadgeClass = "bg-danger";
+                                        else if (log.Action == "APPROVE") actionBadgeClass = "bg-success";
+                                    }
+                                    <span class="badge @actionBadgeClass">@log.Action</span>
+                                </td>
+                                <td>@log.EntityType</td>
+                                <td>@log.Department</td>
+                                <td>@log.Timestamp.ToString("MMM dd, yyyy HH:mm")</td>
+                                <td>
+                                    <button class="btn btn-outline-primary btn-sm" title="View Details" onclick="viewAuditLog('@log.LogId', '@log.UserName', '@log.Action', '@log.EntityType')"><i class="fas fa-eye"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle me-2"></i>No audit logs at this time.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <!-- EMPLOYEE: Show Own Requests/Submissions -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">My Requests & Submissions</h5>
+            <span class="badge bg-primary">Showing @(ViewBag.MyRequests?.Count ?? 0) requests</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Request Type</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (ViewBag.MyRequests != null && ViewBag.MyRequests.Count > 0)
+                    {
+                        @foreach (var request in ViewBag.MyRequests)
+                        {
+                            <tr>
+                                <td><span class="fw-semibold text-primary">#@request.RequestId</span></td>
+                                <td>@request.RequestType</td>
+                                <td>@request.Description</td>
+                                <td>
+                                    @{
+                                        string statusClass = "bg-secondary";
+                                        if (request.Status == "Pending") statusClass = "bg-warning text-dark";
+                                        else if (request.Status == "Approved") statusClass = "bg-success";
+                                        else if (request.Status == "Rejected") statusClass = "bg-danger";
+                                    }
+                                    <span class="badge @statusClass">@request.Status</span>
+                                </td>
+                                <td>@request.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <button class="btn btn-outline-primary btn-sm" title="View" onclick="viewMyRequest('@request.RequestId', '@request.RequestType', '@request.Status')"><i class="fas fa-eye"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox me-2"></i>No requests submitted yet.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- Pagination -->
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-end mb-0">
+            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+            <li class="page-item"><a class="page-link" href="#">2</a></li>
+            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+        </ul>
+    </nav>
+</div>
+
+<!-- View Process Modal -->
+<div class="modal fade" id="viewProcessModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-eye me-2 text-primary"></i>Process Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Process ID</dt>
+                    <dd class="col-sm-8" id="viewProcessId"></dd>
+
+                    <dt class="col-sm-4">Process Name</dt>
+                    <dd class="col-sm-8" id="viewProcessName"></dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8" id="viewDepartment"></dd>
+
+                    <dt class="col-sm-4">Assigned To</dt>
+                    <dd class="col-sm-8" id="viewAssignedTo"></dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8" id="viewStatus"></dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8" id="viewDate"></dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Process Modal -->
+<div class="modal fade" id="editProcessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2 text-primary"></i>Edit Process</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editProcessForm">
+                <input type="hidden" id="editProcessId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Process ID</label>
+                        <input type="text" class="form-control" id="editProcessIdDisplay" readonly disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Process Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editProcessName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Department <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editDepartment" required>
+                            <option value="">Select Department</option>
+                            <option value="Finance">Finance</option>
+                            <option value="HR">HR</option>
+                            <option value="Operations">Operations</option>
+                            <option value="Sales">Sales</option>
+                            <option value="IT">IT</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Assigned To <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editAssignedTo" required>
+                            <option value="">Select Employee</option>
+                            <option value="Maria Santos">Maria Santos</option>
+                            <option value="Juan Dela Cruz">Juan Dela Cruz</option>
+                            <option value="Pedro Reyes">Pedro Reyes</option>
+                            <option value="Ana Garcia">Ana Garcia</option>
+                            <option value="Jose Mendoza">Jose Mendoza</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- New Process Modal -->
+<div class="modal fade" id="newProcessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2 text-primary"></i>New Operational Process</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="newProcessForm" method="post" asp-action="CreateOperationalProcess" asp-controller="Dashboard">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Process Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="processName" id="processName" placeholder="Enter process name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Department <span class="text-danger">*</span></label>
+                        <select class="form-select" name="department" id="department" required>
+                            <option value="">Select Department</option>
+                            <option value="HR">HR</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Operations">Operations</option>
+                            <option value="Sales">Sales</option>
+                            <option value="IT">IT</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Assign To <span class="text-danger">*</span></label>
+                        <select class="form-select" name="assignedTo" id="assignedTo" required>
+                            <option value="">Select Employee</option>
+                            <option value="Maria Santos">Maria Santos</option>
+                            <option value="Juan Dela Cruz">Juan Dela Cruz</option>
+                            <option value="Pedro Reyes">Pedro Reyes</option>
+                            <option value="Ana Garcia">Ana Garcia</option>
+                            <option value="Jose Mendoza">Jose Mendoza</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select" name="priority" id="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" id="description" rows="3" placeholder="Enter description (optional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Create Process
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Report Modal -->
+<div class="modal fade" id="generateReportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-export me-2 text-primary"></i>Generate Operational Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Report Type</label>
+                        <select class="form-select">
+                            <option>Daily Operations Summary</option>
+                            <option>Weekly Process Report</option>
+                            <option>Monthly Performance Report</option>
+                            <option>Custom Date Range</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Department</label>
+                        <select class="form-select">
+                            <option>All Departments</option>
+                            <option>Human Resources</option>
+                            <option>Finance</option>
+                            <option>Operations</option>
+                            <option>Sales</option>
+                            <option>IT</option>
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">From Date</label>
+                            <input type="date" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">To Date</label>
+                            <input type="date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Format</label>
+                        <select class="form-select">
+                            <option>PDF</option>
+                            <option>Excel</option>
+                            <option>CSV</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="generateReport()">
+                    <i class="fas fa-download me-1"></i>Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Initialize: Update record count
+    function initializeApprovedProcesses() {
+        updateRecordCount();
+    }
+
+    // Update record count after filtering
+    function updateRecordCount() {
+        var rows = document.querySelectorAll('#processTable tbody tr');
+        var visibleCount = 0;
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                visibleCount++;
+            }
+        });
+        document.getElementById('recordCount').textContent = `Showing ${visibleCount} records`;
+    }
+
+    // Helper to get antiforgery token for AJAX
+    function getAntiForgeryToken() {
+        var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    // View Process Modal - displays process details
+    function viewProcess(id, name, dept, assignedTo, status, date) {
+        document.getElementById('viewProcessId').innerText = '#' + id;
+        document.getElementById('viewProcessName').innerText = name;
+        document.getElementById('viewDepartment').innerText = dept;
+        document.getElementById('viewAssignedTo').innerText = assignedTo;
+        document.getElementById('viewStatus').innerHTML = getStatusBadge(status);
+        document.getElementById('viewDate').innerText = date;
+        
+        var modal = new bootstrap.Modal(document.getElementById('viewProcessModal'));
+        modal.show();
+    }
+
+    // Open Edit Process Modal
+    function openEditModal(id, name, dept, assignedTo) {
+        document.getElementById('editProcessId').value = id;
+        document.getElementById('editProcessIdDisplay').value = '#' + id;
+        document.getElementById('editProcessName').value = name;
+        document.getElementById('editDepartment').value = dept;
+        document.getElementById('editAssignedTo').value = assignedTo;
+        
+        var modal = new bootstrap.Modal(document.getElementById('editProcessModal'));
+        modal.show();
+    }
+
+    // Get status badge HTML
+    function getStatusBadge(status) {
+        const badgeClass = {
+            'APPROVED': 'bg-success',
+            'Approved': 'bg-success',
+            'ACTIVE': 'bg-success',
+            'Active': 'bg-success',
+            'PENDING': 'bg-warning text-dark',
+            'Pending': 'bg-warning text-dark',
+            'COMPLETED': 'bg-secondary',
+            'Completed': 'bg-secondary'
+        };
+        const cssClass = badgeClass[status] || 'bg-secondary';
+        return '<span class="badge ' + cssClass + '">' + status + '</span>';
+    }
+
+    // Approve process - changes status to APPROVED 
+
+    function approveProcess(id, btn) {
+        if (!confirm('Are you sure you want to approve this process?')) return;
+        
+        var token = getAntiForgeryToken();
+        btn.disabled = true;
+
+        // Get the row
+        var row = document.querySelector('#processTable tbody tr[data-process-id="' + id + '"]');
+        
+        // Send to server
+        fetch('@Url.Action("ApproveProcessAjax", "Dashboard")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify({ processId: id })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                showAlert('success', 'Process #' + id + ' approved successfully!');
+                
+                // Wait a moment then redirect to Approved & Completed page
+                setTimeout(() => {
+                    window.location.href = '@Url.Action("ApprovedAndCompleted", "Dashboard")';
+                }, 1500);
+            } else {
+                alert(data.message || 'Failed to approve process');
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Request failed');
+            btn.disabled = false;
+        });
+    }
+
+    // Complete/Mark process as done
+    function completeProcess(id, btn) {
+        if (!confirm('Mark process ' + id + ' as completed?')) return;
+        
+        var token = getAntiForgeryToken();
+        btn.disabled = true;
+
+        // Get the row
+        var row = document.querySelector('#processTable tbody tr[data-process-id="' + id + '"]');
+
+        // Send to server
+        fetch('@Url.Action("CompleteProcessAjax", "Dashboard")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify({ processId: id })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                showAlert('success', 'Process #' + id + ' marked as completed!');
+                
+                // Wait a moment then reload the page to see updated data from database
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert(data.message || 'Failed to complete process');
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Request failed');
+            btn.disabled = false;
+        });
+    }
+
+    // Show alert message
+    function showAlert(type, message) {
+        var alertHtml = '<div class="alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show" role="alert">' +
+            '<i class="fas ' + (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle') + ' me-2"></i>' + message +
+            '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+            '</div>';
+        
+        var alertContainer = document.querySelector('.chart-card');
+        if (alertContainer) {
+            alertContainer.insertAdjacentHTML('beforebegin', alertHtml);
+            setTimeout(() => {
+                var alert = document.querySelector('.alert');
+                if (alert) alert.remove();
+            }, 3000);
+        }
+    }
+
+    // Handle edit form submission
+    document.getElementById('editProcessForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var id = document.getElementById('editProcessId').value;
+        var name = document.getElementById('editProcessName').value;
+        var dept = document.getElementById('editDepartment').value;
+        var assignedTo = document.getElementById('editAssignedTo').value;
+        
+        // Find and update the row
+        var row = document.querySelector('#processTable tbody tr[data-process-id="' + id + '"]');
+        if (row) {
+            row.cells[1].textContent = name;
+            row.cells[2].textContent = dept;
+            row.cells[3].textContent = assignedTo;
+            showAlert('success', 'Process updated successfully!');
+        }
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('editProcessModal')).hide();
+    });
+
+    // Filter table - Operations page can now filter by different status types
+    function filterTable() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const dept = document.getElementById('deptFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const rows = document.querySelectorAll('#processTable tbody tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const rowDept = row.cells[2].textContent;
+            const rowStatus = row.cells[5].textContent.trim();
+            
+            const matchSearch = text.includes(search);
+            const matchDept = !dept || rowDept.includes(dept);
+            const matchStatus = !status || rowStatus.includes(status);
+            
+            // Show row if it matches search AND dept AND (status filter is empty/All OR matches status)
+            if (matchSearch && matchDept && matchStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('recordCount').textContent = `Showing ${visibleCount} records`;
+    }
+    
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('deptFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        filterTable();
+    }
+    
+    function filterByStatus(status) {
+        document.getElementById('statusFilter').value = status.charAt(0).toUpperCase() + status.slice(1);
+        filterTable();
+    }
+    
+    function generateProcessReport(id) {
+        alert('Generating report for process: ' + id);
+    }
+    
+    
+    function submitNewProcess() {
+        // Form will auto-submit now since we're using proper form tag
+        // This function is kept for backward compatibility
+        document.getElementById('newProcessForm').submit();
+    }
+    
+    function generateReport() {
+        alert('Generating operational report...\n\nReport will be downloaded shortly.');
+        bootstrap.Modal.getInstance(document.getElementById('generateReportModal')).hide();
+    }
+    
+    // View Request Details - HR
+    function viewRequest(id, employee, type, status) {
+        alert('Request #' + id + '\nEmployee: ' + employee + '\nType: ' + type + '\nStatus: ' + status);
+    }
+
+    // Approve/Reject HR Requests
+    function approveRequest(id) {
+        if (!confirm('Approve request #' + id + '?')) return;
+        alert('Request #' + id + ' has been approved.');
+        location.reload();
+    }
+
+    function rejectRequest(id) {
+        if (!confirm('Reject request #' + id + '?')) return;
+        alert('Request #' + id + ' has been rejected.');
+        location.reload();
+    }
+
+    // View Financial Request - Accountant
+    function viewFinancialRequest(id, dept, amount, status) {
+        alert('Financial Request #' + id + '\nDepartment: ' + dept + '\nAmount: ' + amount + '\nStatus: ' + status);
+    }
+
+    // Approve/Reject Financial Requests
+    function approveFinancial(id) {
+        if (!confirm('Approve financial request #' + id + '?')) return;
+        alert('Financial request #' + id + ' has been approved.');
+        location.reload();
+    }
+
+    function rejectFinancial(id) {
+        if (!confirm('Reject financial request #' + id + '?')) return;
+        alert('Financial request #' + id + ' has been rejected.');
+        location.reload();
+    }
+
+    // View Audit Log - Auditor
+    function viewAuditLog(id, user, action, entityType) {
+        alert('Audit Log #' + id + '\nUser: ' + user + '\nAction: ' + action + '\nEntity Type: ' + entityType);
+    }
+
+    // View My Request - Employee
+    function viewMyRequest(id, type, status) {
+        alert('Request #' + id + '\nType: ' + type + '\nStatus: ' + status);
+    }

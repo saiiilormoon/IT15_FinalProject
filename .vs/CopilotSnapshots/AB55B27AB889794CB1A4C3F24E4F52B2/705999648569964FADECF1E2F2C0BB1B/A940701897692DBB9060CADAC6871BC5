@@ -1,0 +1,35 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace CVM_FinalProject.Models
+{
+    /// <summary>
+    /// Represents a department in the organization
+    /// </summary>
+    public class Department
+    {
+        [Key]
+        [Column("Department_ID")]
+        public int DepartmentId { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string DepartmentName { get; set; } = string.Empty;
+
+        [StringLength(50)]
+        public string? Status { get; set; }
+
+        [Column("IsArchived")]
+        public bool IsArchived { get; set; } = false;
+
+        [Column("ArchivedAt")]
+        public DateTime? ArchivedAt { get; set; }
+
+        [StringLength(250)]
+        public string? ArchiveReason { get; set; }
+
+        // Navigation properties
+        public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
+        public virtual ICollection<Budget> Budgets { get; set; } = new List<Budget>();
+    }
+}

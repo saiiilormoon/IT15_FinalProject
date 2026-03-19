@@ -1,0 +1,211 @@
+using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Services
+{
+    /// <summary>
+    /// Service for managing employees
+    /// </summary>
+    public class EmployeeService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<EmployeeService> _logger;
+
+        public EmployeeService(ApplicationDbContext context, ILogger<EmployeeService> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        // Create employee record for user
+        public async Task<Employee> CreateEmployeeAsync(string userId, int departmentId, string position, string status)
+        {
+            try
+            {
+                // Check if user exists
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    throw new InvalidOperationException("User not found");
+
+                // Check if an active (non-archived) employee already exists for this user
+                var existing = await _context.Employees
+                    .FirstOrDefaultAsync(e => e.UserId == userId && !e.IsArchived);
+                if (existing != null)
+                    throw new InvalidOperationException("An active employee record already exists for this user");
+
+                var employee = new Employee
+                {
+                    EmployeeId = Guid.NewGuid().ToString(),
+                    UserId = userId,
+                    DepartmentId = departmentId,
+                    Position = position,
+                    EmployeeStatus = status ?? "Active",
+                    DateHired = DateTime.UtcNow
+                };
+
+                _context.Employees.Add(employee);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Employee created for user: {userId}");
+                return employee;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating employee");
+                throw;
+            }
+        }
+
+        // Get employee by user ID
+        public async Task<Employee?> GetEmployeeByUserIdAsync(string userId)
+        {
+            try
+            {
+                return await _context.Employees
+                    .Include(e => e.User)
+                    .Include(e => e.Department)
+                    .FirstOrDefaultAsync(e => e.UserId == userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting employee by user ID");
+                throw;
+            }
+        }
+
+        // Get all employees
+        public async Task<List<Employee>> GetAllEmployeesAsync()
+        {
+            try
+            {
+                return await _context.Employees
+                    .Include(e => e.User)
+                    .Include(e => e.Department)
+                    .OrderBy(e => e.User!.FirstName)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all employees");
+                throw;
+            }
+        }
+
+        // Get employees by department
+        public async Task<List<Employee>> GetEmployeesByDepartmentAsync(int departmentId)
+        {
+            try
+            {
+                return await _context.Employees
+                    .Where(e => e.DepartmentId == departmentId)
+                    .Include(e => e.User)
+                    .Include(e => e.Department)
+                    .OrderBy(e => e.User!.FirstName)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting employees by department");
+                throw;
+            }
+        }
+
+        // Update employee information
+        public async Task<Employee> UpdateEmployeeAsync(string employeeId, int departmentId, string position, string status)
+        {
+            try
+            {
+                var employee = await _context.Employees.FindAsync(employeeId);
+                if (employee == null)
+                    throw new InvalidOperationException("Employee not found");
+
+                employee.DepartmentId = departmentId;
+                employee.Position = position;
+                employee.EmployeeStatus = status;
+
+                _context.Employees.Update(employee);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Employee updated: {employeeId}");
+                return employee;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating employee");
+                throw;
+            }
+        }
+
+        // Get employee statistics
+        public async Task<EmployeeStatsViewModel> GetEmployeeStatsAsync(string employeeId)
+        {
+            try
+            {
+                var employee = await _context.Employees
+                    .Include(e => e.User)
+                    .Include(e => e.Department)
+                    .Include(e => e.PerformanceRecords)
+                    .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+
+                if (employee == null)
+                    throw new InvalidOperationException("Employee not found");
+
+                return new EmployeeStatsViewModel
+                {
+                    EmployeeId = employeeId,
+                    FullName = employee.User?.FullName ?? "Unknown",
+                    Email = employee.User?.Email ?? "N/A",
+                    Department = employee.Department?.DepartmentName ?? "N/A",
+                    Position = employee.Position ?? "N/A",
+                    Status = employee.EmployeeStatus ?? "N/A",
+                    DateHired = employee.DateHired,
+                    TotalPerformanceRecords = employee.PerformanceRecords?.Count ?? 0,
+                    LastEvaluation = employee.PerformanceRecords?
+                        .OrderByDescending(p => p.RecordedAt)
+                        .FirstOrDefault()?.RecordedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting employee stats");
+                throw;
+            }
+        }
+
+        // Delete employee (archive)
+        public async Task DeleteEmployeeAsync(string employeeId)
+        {
+            try
+            {
+                var employee = await _context.Employees.FindAsync(employeeId);
+                if (employee == null)
+                    throw new InvalidOperationException("Employee not found");
+
+                _context.Employees.Remove(employee);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Employee deleted: {employeeId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting employee");
+                throw;
+            }
+        }
+    }
+
+    // View model for employee statistics
+    public class EmployeeStatsViewModel
+    {
+        public string EmployeeId { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Department { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime? DateHired { get; set; }
+        public int TotalPerformanceRecords { get; set; }
+        public DateTime? LastEvaluation { get; set; }
+    }
+}

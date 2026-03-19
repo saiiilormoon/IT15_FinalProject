@@ -1,0 +1,73 @@
+@model Report
+@using CVM_FinalProject.Models
+@{
+    ViewData["Title"] = "View Report";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-1">Report Details</h1>
+            <p class="text-muted mb-0">@Model?.ReportType</p>
+        </div>
+        <div>
+            <a href="javascript:window.print()" class="btn btn-primary">
+                <i class="fas fa-print me-2"></i>Print
+            </a>
+            <a href="/Dashboard/Reports" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h5 class="mb-1">@Model?.ReportType</h5>
+                    <small class="text-muted">Generated on @Model?.GeneratedAt.ToString("MMMM dd, yyyy hh:mm tt") by @(Model?.User?.FullName ?? "System")</small>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary">Report ID: @Model?.ReportId</span>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="report-content">
+                <pre style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">@Model?.ReportData</pre>
+            </div>
+
+            <hr>
+
+            <div class="d-flex gap-2">
+                <a href="/Dashboard/DownloadReport/@Model?.ReportId" class="btn btn-primary">
+                    <i class="fas fa-download me-2"></i>Download Report
+                </a>
+                <button class="btn btn-secondary" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Print Report
+                </button>
+                <a href="/Dashboard/Reports" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Print-specific styles
+        if (window.matchMedia) {
+            const mediaQuery = window.matchMedia('print');
+            mediaQuery.addListener(function (mq) {
+                if (!mq.matches) {
+                    console.log('Print dialog closed');
+                }
+            });
+        }
+    </script>
+}

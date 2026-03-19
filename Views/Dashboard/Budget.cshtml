@@ -1,0 +1,483 @@
+@{
+    ViewData["Title"] = "Budget Monitoring";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Budget Monitoring</h2>
+            <p>Track and manage organizational budget allocations and expenditures.</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <select class="form-select form-select-sm" style="width: auto;">
+                <option>FY 2026</option>
+                <option>FY 2025</option>
+            </select>
+            @{
+                var budgetUserRole = ViewBag.UserRole as string ?? "Employee";
+                var canAllocate = budgetUserRole == "Admin" || budgetUserRole == "SuperAdmin";
+            }
+            @if (canAllocate)
+            {
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#allocationModal">
+                    <i class="fas fa-plus me-1"></i>New Allocation
+                </button>
+            }
+            else
+            {
+                <span class="badge bg-secondary" title="Only SuperAdmin can create allocations">
+                    <i class="fas fa-lock me-1"></i>Read-Only Access
+                </span>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Budget Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-coins"></i>
+            </div>
+            <h3>P5.2M</h3>
+            <p>Total Budget</p>
+            <div class="stat-change">
+                <i class="fas fa-calendar me-1"></i>FY 2026
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <h3>P3.8M</h3>
+            <p>Utilized</p>
+            <div class="stat-change positive">
+                <i class="fas fa-check me-1"></i>73% used
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-piggy-bank"></i>
+            </div>
+            <h3>P1.4M</h3>
+            <p>Remaining</p>
+            <div class="stat-change">
+                <i class="fas fa-info-circle me-1"></i>27% available
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3>2</h3>
+            <p>Alerts</p>
+            <div class="stat-change negative">
+                <i class="fas fa-bell me-1"></i>Requires attention
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Budget Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Monthly Budget Utilization</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary active">Allocated</button>
+                    <button class="btn btn-outline-primary">Spent</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="budgetChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <h5>Budget by Department</h5>
+            <div class="chart-container-sm">
+                <canvas id="deptBudgetChart"></canvas>
+            </div>
+            <div class="mt-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #1e3c72; font-size: 8px;"></i> Operations</small>
+                    <small class="fw-semibold">₱1.5M</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #2a5298; font-size: 8px;"></i> HR</small>
+                    <small class="fw-semibold">₱800K</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #27ae60; font-size: 8px;"></i> Finance</small>
+                    <small class="fw-semibold">₱600K</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #f39c12; font-size: 8px;"></i> Sales</small>
+                    <small class="fw-semibold">₱500K</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #3498db; font-size: 8px;"></i> IT</small>
+                    <small class="fw-semibold">₱400K</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Alerts Section -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="chart-card" style="background: linear-gradient(135deg, rgba(231,76,60,0.1), rgba(241,196,15,0.1)); border-left: 4px solid #e74c3c;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1"><i class="fas fa-exclamation-triangle text-danger me-2"></i>Budget Alerts</h5>
+                    <p class="text-muted mb-0 small">3 items require attention</p>
+                </div>
+                <button class="btn btn-sm btn-outline-danger" onclick="viewAllAlerts()">View Details</button>
+            </div>
+            <hr>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center p-2 bg-white rounded">
+                        <div class="me-3">
+                            <i class="fas fa-chart-line text-warning" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <strong>Sales Department</strong>
+                            <p class="mb-0 small text-muted">Budget utilization at 90% - ₱50,000 remaining</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-warning" onclick="requestReallocation('Sales')">Request More</button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center p-2 bg-white rounded">
+                        <div class="me-3">
+                            <i class="fas fa-cogs text-info" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <strong>Operations Department</strong>
+                            <p class="mb-0 small text-muted">Budget utilization at 85% - ₱225,000 remaining</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-info" onclick="viewDeptBudget('Operations')">View Details</button>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="d-flex align-items-center p-2 bg-white rounded border border-warning" style="border-style: dashed !important;">
+                        <div class="me-3">
+                            <i class="fas fa-clock text-secondary" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <strong>Pending Allocation: Marketing</strong>
+                            <p class="mb-0 small text-muted">Awaiting admin approval for ₱250,000 for FY 2026</p>
+                        </div>
+                        <span class="badge bg-secondary">Pending Activation</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department Budget Table -->
+<div class="data-table">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <h5 class="mb-0">Department Budget Status</h5>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            @{
+                var exportRole = ViewBag.UserRole as string ?? "Employee";
+                var canExportBudget = exportRole == "Admin" || exportRole == "SuperAdmin" || exportRole == "Accountant";
+            }
+            @if (canExportBudget)
+            {
+                <button class="btn btn-sm btn-outline-primary" onclick="exportBudgetReport()">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+            }
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Allocated</th>
+                    <th>Spent</th>
+                    <th>Remaining</th>
+                    <th>Utilization</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><i class="fas fa-cogs text-info me-2"></i>Operations</td>
+                    <td>P1,500,000</td>
+                    <td>P1,275,000</td>
+                    <td>P225,000</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px; width: 80px;">
+                                <div class="progress-bar bg-warning" style="width: 85%"></div>
+                            </div>
+                            <small>85%</small>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-warning text-dark">Monitor</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewDeptBudget('Operations')"><i class="fas fa-eye"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-users text-primary me-2"></i>Human Resources</td>
+                    <td>P800,000</td>
+                    <td>P560,000</td>
+                    <td>P240,000</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px; width: 80px;">
+                                <div class="progress-bar bg-success" style="width: 70%"></div>
+                            </div>
+                            <small>70%</small>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-success">On Track</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewDeptBudget('HR')"><i class="fas fa-eye"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-calculator text-success me-2"></i>Finance</td>
+                    <td>P600,000</td>
+                    <td>P420,000</td>
+                    <td>P180,000</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px; width: 80px;">
+                                <div class="progress-bar bg-success" style="width: 70%"></div>
+                            </div>
+                            <small>70%</small>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-success">On Track</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewDeptBudget('Finance')"><i class="fas fa-eye"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-chart-line text-warning me-2"></i>Sales</td>
+                    <td>P500,000</td>
+                    <td>P450,000</td>
+                    <td>P50,000</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px; width: 80px;">
+                                <div class="progress-bar bg-danger" style="width: 90%"></div>
+                            </div>
+                            <small>90%</small>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-danger">Critical</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewDeptBudget('Sales')"><i class="fas fa-eye"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-laptop-code text-secondary me-2"></i>IT</td>
+                    <td>P400,000</td>
+                    <td>P260,000</td>
+                    <td>P140,000</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px; width: 80px;">
+                                <div class="progress-bar bg-success" style="width: 65%"></div>
+                            </div>
+                            <small>65%</small>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-success">On Track</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewDeptBudget('IT')"><i class="fas fa-eye"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr class="table-light">
+                    <td><strong>Total</strong></td>
+                    <td><strong>P3,800,000</strong></td>
+                    <td><strong>P2,965,000</strong></td>
+                    <td><strong>P835,000</strong></td>
+                    <td><strong>78%</strong></td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- New Allocation Modal -->
+<div class="modal fade" id="allocationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2 text-primary"></i>New Budget Allocation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Department <span class="text-danger">*</span></label>
+                        <select class="form-select" required>
+                            <option value="">Select Department</option>
+                            <option>Human Resources</option>
+                            <option>Finance</option>
+                            <option>Operations</option>
+                            <option>Sales</option>
+                            <option>IT</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount (PHP) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">P</span>
+                            <input type="number" class="form-control" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Purpose</label>
+                        <input type="text" class="form-control" placeholder="Enter allocation purpose">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitAllocation()">
+                    <i class="fas fa-save me-1"></i>Submit Allocation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Budget Utilization Chart - properly constrained
+    const budgetCtx = document.getElementById('budgetChart').getContext('2d');
+    new Chart(budgetCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Allocated',
+                data: [600000, 620000, 650000, 680000, 700000, 750000],
+                backgroundColor: 'rgba(30, 60, 114, 0.8)',
+                borderRadius: 4,
+                barThickness: 'flex',
+                maxBarThickness: 35
+            }, {
+                label: 'Spent',
+                data: [520000, 580000, 610000, 650000, 680000, 720000],
+                backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                borderRadius: 4,
+                barThickness: 'flex',
+                maxBarThickness: 35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { 
+                    position: 'top', 
+                    labels: { 
+                        boxWidth: 12,
+                        padding: 15,
+                        font: { size: 11 },
+                        usePointStyle: true
+                    } 
+                } 
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { 
+                        callback: value => '₱' + (value / 1000) + 'K',
+                        font: { size: 10 }
+                    },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { font: { size: 10 } }
+                }
+            }
+        }
+    });
+
+    // Department Budget Chart - properly constrained doughnut
+    const deptCtx = document.getElementById('deptBudgetChart').getContext('2d');
+    new Chart(deptCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Operations', 'HR', 'Finance', 'Sales', 'IT'],
+            datasets: [{
+                data: [1500000, 800000, 600000, 500000, 400000],
+                backgroundColor: ['#1e3c72', '#2a5298', '#27ae60', '#f39c12', '#3498db'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            var value = context.raw;
+                            return context.label + ': ₱' + (value / 1000000).toFixed(1) + 'M';
+                        }
+                    }
+                }
+            },
+            cutout: '55%'
+        }
+    });
+
+    function viewDeptBudget(dept) {
+        alert('Viewing budget details for ' + dept + ' department');
+    }
+
+    function viewAllAlerts() {
+        alert('Opening all budget alerts...');
+    }
+
+    function requestReallocation(dept) {
+        alert('Requesting budget reallocation for ' + dept + ' department');
+    }
+
+    function exportBudgetReport() {
+        alert('Exporting budget report...');
+    }
+
+    function submitAllocation() {
+        alert('Budget allocation submitted for approval!');
+        bootstrap.Modal.getInstance(document.getElementById('allocationModal')).hide();
+    }
+</script>
+}

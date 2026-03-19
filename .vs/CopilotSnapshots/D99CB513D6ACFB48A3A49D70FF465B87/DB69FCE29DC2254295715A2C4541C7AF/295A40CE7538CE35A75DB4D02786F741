@@ -1,0 +1,734 @@
+﻿@using CVM_FinalProject.Models.ViewModels
+@{
+    ViewData["Title"] = "Employee Performance Monitoring";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+    var perfStats = ViewBag.PerfStats as EmployeePerformanceStatsViewModel;
+}
+
+<style>
+    .performance-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .badge-excellent { background: #27ae60; color: white; }
+    .badge-good { background: #3498db; color: white; }
+    .badge-average { background: #f39c12; color: white; }
+    .badge-below-average { background: #e74c3c; color: white; }
+    .badge-poor { background: #95a5a6; color: white; }
+    
+    .rating-stars {
+        color: #f39c12;
+        font-size: 16px;
+    }
+    
+    .productivity-score {
+        font-size: 20px;
+        font-weight: bold;
+        color: #2a5298;
+    }
+    
+    .task-stat {
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .task-stat-value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #1e3c72;
+    }
+    
+    .task-stat-label {
+        color: #666;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+    
+    .completion-bar {
+        height: 6px;
+        background: #e0e0e0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+    
+    .completion-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #27ae60, #2ecc71);
+        border-radius: 3px;
+    }
+    
+    .performance-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.3s;
+    }
+    
+    .performance-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .stat-metric {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .stat-metric:last-child {
+        border-bottom: none;
+    }
+    
+    .stat-metric-label {
+        color: #666;
+        font-size: 13px;
+    }
+    
+    .stat-metric-value {
+        font-weight: 600;
+        color: #2a5298;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+        margin: 20px 0;
+    }
+    
+    .department-card {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border-left: 4px solid #2a5298;
+    }
+    
+    .employee-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+</style>
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>?? Employee Performance Monitoring</h2>
+            <p>Track employee productivity, task completion, and performance ratings</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#recordPerformanceModal">
+                <i class="fas fa-plus me-1"></i>Record Evaluation
+            </button>
+            <button class="btn btn-outline-primary" onclick="exportPerformanceData()">
+                <i class="fas fa-download me-1"></i>Export
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Summary Cards -->
+@if (perfStats != null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>@perfStats.EmployeesEvaluated</h3>
+                <p>Employees Evaluated</p>
+                <div class="stat-change">
+                    <i class="fas fa-chart-pie me-1"></i>@perfStats.EvaluationCoverage.ToString("F1")% coverage
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>@perfStats.TotalTasksCompleted</h3>
+                <p>Tasks Completed</p>
+                <div class="stat-change positive">
+                    <i class="fas fa-arrow-up me-1"></i>@perfStats.AverageTaskCompletionRate.ToString("F1")% avg
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h3>@perfStats.AverageProductivityScore.ToString("F1")</h3>
+                <p>Avg Productivity</p>
+                <div class="stat-change">
+                    <i class="fas fa-metric me-1"></i>Score out of 100
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <h3>@perfStats.HighPerformers</h3>
+                <p>High Performers</p>
+                <div class="stat-change">
+                    <i class="fas fa-trophy me-1"></i>Rating 4-5 stars
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Distribution Charts -->
+    <div class="row g-3 mb-4">
+        <!-- Productivity Distribution Chart -->
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5 class="mb-3">?? Productivity Score Distribution</h5>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="productivityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Rating Distribution -->
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5 class="mb-3">? Performance Rating Distribution</h5>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="ratingChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Completion and Department Performance -->
+    <div class="row g-3 mb-4">
+        <!-- Task Statistics -->
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5 class="mb-3">? Task Completion Overview</h5>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="taskChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Performance Comparison -->
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5 class="mb-3">?? Department Performance Comparison</h5>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="departmentChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Category Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+            <div class="performance-card text-center">
+                <div class="task-stat">
+                    <div class="task-stat-value" style="color: #27ae60;">@perfStats.HighPerformers</div>
+                    <div class="task-stat-label">High Performers</div>
+                    <div class="performance-badge badge-excellent">Rating 4-5</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="performance-card text-center">
+                <div class="task-stat">
+                    <div class="task-stat-value" style="color: #f39c12;">@perfStats.AveragePerformers</div>
+                    <div class="task-stat-label">Average Performers</div>
+                    <div class="performance-badge badge-average">Rating 3</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="performance-card text-center">
+                <div class="task-stat">
+                    <div class="task-stat-value" style="color: #e74c3c;">@perfStats.BelowAveragePerformers</div>
+                    <div class="task-stat-label">Below Average</div>
+                    <div class="performance-badge badge-below-average">Rating 1-2</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performers -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="chart-card">
+                <h5 class="mb-3">?? Top Performers</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">Rank</th>
+                                <th>Employee Name</th>
+                                <th>Department</th>
+                                <th>Tasks Completed</th>
+                                <th>Completion Rate</th>
+                                <th>Rating</th>
+                                <th>Productivity Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int rank = 1;
+                                foreach (var emp in perfStats.EmployeePerformances.OrderByDescending(e => e.ProductivityScore).Take(10))
+                                {
+                                    <tr class="employee-row">
+                                        <td><strong>@rank</strong></td>
+                                        <td><strong>@emp.EmployeeName</strong></td>
+                                        <td>@emp.Department</td>
+                                        <td>
+                                            <span class="badge bg-success">@emp.TasksCompleted</span>
+                                            <small class="text-muted">/ @emp.TotalTasksAssigned total</small>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 8px;">
+                                                    <div class="progress-bar bg-success" style="width: @emp.TaskCompletionRate%"></div>
+                                                </div>
+                                                <small>@emp.TaskCompletionRate.ToString("F1")%</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="rating-stars">
+                                                @for (int i = 0; i < emp.PerformanceRating; i++)
+                                                {
+                                                    <i class="fas fa-star"></i>
+                                                }
+                                                @for (int i = emp.PerformanceRating; i < 5; i++)
+                                                {
+                                                    <i class="far fa-star"></i>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <strong class="productivity-score">@emp.ProductivityScore.ToString("F1")</strong>
+                                            <small class="text-muted">/100</small>
+                                        </td>
+                                        <td>
+                                            <span class="performance-badge @GetBadgeClass(emp.PerformanceStatus)">
+                                                @emp.PerformanceStatus
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    rank++;
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Performance Details -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="chart-card">
+                <h5 class="mb-3">?? Department Performance Summary</h5>
+                <div class="row g-3">
+                    @foreach (var dept in perfStats.DepartmentPerformances)
+                    {
+                        <div class="col-lg-6">
+                            <div class="department-card">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h6 class="mb-1">@dept.DepartmentName</h6>
+                                        <small class="text-muted">@dept.EmployeeCount employees</small>
+                                    </div>
+                                    <div class="productivity-score">@dept.AverageProductivityScore.ToString("F1")</div>
+                                </div>
+
+                                <div class="stat-metric">
+                                    <span class="stat-metric-label">Total Tasks Completed</span>
+                                    <span class="stat-metric-value">@dept.TotalTasksCompleted</span>
+                                </div>
+
+                                <div class="stat-metric">
+                                    <span class="stat-metric-label">Avg Completion Rate</span>
+                                    <span class="stat-metric-value">@dept.AverageTaskCompletionRate.ToString("F1")%</span>
+                                </div>
+
+                                <div class="stat-metric">
+                                    <span class="stat-metric-label">High Performers</span>
+                                    <span class="stat-metric-value">@dept.HighPerformers</span>
+                                </div>
+
+                                <div class="stat-metric">
+                                    <span class="stat-metric-label">Average Performers</span>
+                                    <span class="stat-metric-value">@dept.AveragePerformers</span>
+                                </div>
+
+                                <div class="stat-metric">
+                                    <span class="stat-metric-label">Below Average</span>
+                                    <span class="stat-metric-value">@dept.BelowAveragePerformers</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Employees Performance Table -->
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">?? All Employees Performance Details</h5>
+                    <input type="text" class="form-control form-control-sm" placeholder="Search employee..." id="searchEmployee" style="width: 250px;">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="performanceTable">
+                        <thead>
+                            <tr>
+                                <th>Employee Name</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Tasks Completed</th>
+                                <th>Tasks Pending</th>
+                                <th>Completion Rate</th>
+                                <th>Rating</th>
+                                <th>Productivity Score</th>
+                                <th>Status</th>
+                                <th>Last Evaluation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var emp in perfStats.EmployeePerformances)
+                            {
+                                <tr class="employee-row">
+                                    <td><strong>@emp.EmployeeName</strong></td>
+                                    <td>@emp.Department</td>
+                                    <td>@emp.Position</td>
+                                    <td>
+                                        <span class="badge bg-success">@emp.TasksCompleted</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning">@emp.TasksPending</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="progress flex-grow-1" style="height: 6px; width: 100px;">
+                                                <div class="progress-bar" style="width: @emp.TaskCompletionRate%"></div>
+                                            </div>
+                                            <small>@emp.TaskCompletionRate.ToString("F0")%</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="rating-stars" style="font-size: 12px;">
+                                            @for (int i = 0; i < emp.PerformanceRating; i++)
+                                            {
+                                                <i class="fas fa-star"></i>
+                                            }
+                                            @for (int i = emp.PerformanceRating; i < 5; i++)
+                                            {
+                                                <i class="far fa-star"></i>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong>@emp.ProductivityScore.ToString("F1")</strong>
+                                    </td>
+                                    <td>
+                                        <span class="performance-badge @GetBadgeClass(emp.PerformanceStatus)">
+                                            @emp.PerformanceStatus
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>@emp.LastEvaluationDate.ToString("MMM dd, yyyy")</small>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Record Performance Modal -->
+<div class="modal fade" id="recordPerformanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2 text-primary"></i>Record Employee Performance
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-action="RecordPerformance">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Employee <span class="text-danger">*</span></label>
+                            <select class="form-select" name="employeeId" required>
+                                <option value="">-- Select Employee --</option>
+                                @{
+                                    var employeeList = ViewBag.Employees as List<CVM_FinalProject.Models.Employee>;
+                                    if (employeeList != null && employeeList.Count > 0)
+                                    {
+                                        foreach (var emp in employeeList)
+                                        {
+                                            <option value="@emp.EmployeeId">
+                                                @(emp.User?.FullName ?? "Unknown") - @(emp.Position ?? "N/A") (@(emp.Department?.DepartmentName ?? "Unassigned"))
+                                            </option>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <option disabled>No employees available</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Evaluation Period <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="evaluationPeriod" placeholder="e.g., Q1 2026" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tasks Completed <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="tasksCompleted" min="0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tasks Pending <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="tasksPending" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Performance Rating <span class="text-danger">*</span></label>
+                        <div class="btn-group w-100" role="group">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <input type="radio" class="btn-check" name="performanceRating" id="rating@i" value="@i">
+                                <label class="btn btn-outline-warning" for="rating@i">
+                                    @for (int j = 0; j < i; j++)
+                                    {
+                                        <i class="fas fa-star"></i>
+                                    }
+                                    @for (int j = i; j < 5; j++)
+                                    {
+                                        <i class="far fa-star"></i>
+                                    }
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Remarks</label>
+                        <textarea class="form-control" name="remarks" rows="3" placeholder="Enter performance remarks..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Record Evaluation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Productivity Score Distribution Chart
+        const productivityCtx = document.getElementById('productivityChart').getContext('2d');
+        const performanceStats = @Html.Raw(Json.Serialize(perfStats.EmployeePerformances.Select(e => e.ProductivityScore)));
+        
+        new Chart(productivityCtx, {
+            type: 'histogram',
+            data: {
+                labels: ['0-20', '20-40', '40-60', '60-80', '80-100'],
+                datasets: [{
+                    label: 'Number of Employees',
+                    data: [
+                        @perfStats.EmployeePerformances.Count(e => e.ProductivityScore < 20),
+                        @perfStats.EmployeePerformances.Count(e => e.ProductivityScore >= 20 && e.ProductivityScore < 40),
+                        @perfStats.EmployeePerformances.Count(e => e.ProductivityScore >= 40 && e.ProductivityScore < 60),
+                        @perfStats.EmployeePerformances.Count(e => e.ProductivityScore >= 60 && e.ProductivityScore < 80),
+                        @perfStats.EmployeePerformances.Count(e => e.ProductivityScore >= 80)
+                    ],
+                    backgroundColor: 'rgba(42, 82, 152, 0.7)',
+                    borderColor: '#2a5298',
+                    borderWidth: 2,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Number of Employees' }
+                    }
+                }
+            }
+        });
+
+        // Performance Rating Distribution Chart
+        const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+        new Chart(ratingCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Excellent (5)', 'Good (4)', 'Average (3)', 'Below Avg (2)', 'Poor (1)'],
+                datasets: [{
+                    data: [
+                        @perfStats.EmployeePerformances.Count(e => e.PerformanceRating == 5),
+                        @perfStats.EmployeePerformances.Count(e => e.PerformanceRating == 4),
+                        @perfStats.EmployeePerformances.Count(e => e.PerformanceRating == 3),
+                        @perfStats.EmployeePerformances.Count(e => e.PerformanceRating == 2),
+                        @perfStats.EmployeePerformances.Count(e => e.PerformanceRating == 1)
+                    ],
+                    backgroundColor: ['#27ae60', '#3498db', '#f39c12', '#e74c3c', '#95a5a6'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.raw + ' employees';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Task Completion Chart
+        const taskCtx = document.getElementById('taskChart').getContext('2d');
+        new Chart(taskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending'],
+                datasets: [{
+                    data: [@perfStats.TotalTasksCompleted, @perfStats.TotalTasksPending],
+                    backgroundColor: ['#27ae60', '#e74c3c'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = @perfStats.TotalTasksCompleted + @perfStats.TotalTasksPending;
+                                const percentage = ((context.raw / total) * 100).toFixed(1);
+                                return context.label + ': ' + context.raw + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Department Performance Comparison Chart
+        const deptCtx = document.getElementById('departmentChart').getContext('2d');
+        new Chart(deptCtx, {
+            type: 'bar',
+            data: {
+                labels: @Html.Raw(Json.Serialize(perfStats.DepartmentPerformances.Select(d => d.DepartmentName))),
+                datasets: [{
+                    label: 'Avg Productivity Score',
+                    data: @Html.Raw(Json.Serialize(perfStats.DepartmentPerformances.Select(d => d.AverageProductivityScore))),
+                    backgroundColor: 'rgba(42, 82, 152, 0.7)',
+                    borderColor: '#2a5298',
+                    borderWidth: 2,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: value => value.toFixed(0)
+                        }
+                    }
+                }
+            }
+        });
+
+        // Search functionality
+        document.getElementById('searchEmployee')?.addEventListener('keyup', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('#performanceTable tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        function exportPerformanceData() {
+            alert('Exporting performance data...');
+            // Implement export functionality
+        }
+    </script>
+}
+
+@functions {
+    private string GetBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Excellent" => "badge-excellent",
+            "Good" => "badge-good",
+            "Average" => "badge-average",
+            "Below Average" => "badge-below-average",
+            "Poor" => "badge-poor",
+            _ => "badge-average"
+        };
+    }
+}

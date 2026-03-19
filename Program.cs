@@ -1,0 +1,142 @@
+using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using CVM_FinalProject.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(connectionString, sqlOptions =>
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorNumbersToAdd: null)));
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+.AddRoles<IdentityRole>()
+.AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddControllersWithViews();
+
+// Add Role-Based Authorization Policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("SuperAdmin"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("SuperAdmin", "Admin"));
+    options.AddPolicy("FinancialAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant"));
+    options.AddPolicy("HRAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "HR"));
+    options.AddPolicy("AuditAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "Auditor"));
+    options.AddPolicy("EmployeeAccess", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant", "HR", "Auditor", "Employee"));
+    options.AddPolicy("ReadOnly", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant", "HR", "Auditor", "Employee"));
+    options.AddPolicy("CanApproveRequests", policy => policy.RequireRole("SuperAdmin", "Admin"));
+    options.AddPolicy("CanManageUsers", policy => policy.RequireRole("SuperAdmin", "Admin"));
+    options.AddPolicy("CanManageBudgets", policy => policy.RequireRole("SuperAdmin", "Admin", "Accountant"));
+    options.AddPolicy("CanManageHR", policy => policy.RequireRole("SuperAdmin", "Admin", "HR"));
+});
+
+// Register application services
+builder.Services.AddScoped<DepartmentService>();
+builder.Services.AddScoped<EmployeeService>();
+builder.Services.AddScoped<PerformanceService>();
+builder.Services.AddScoped<BudgetService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<ReportingService>();
+builder.Services.AddScoped<ReportExportService>();
+builder.Services.AddScoped<AccountantService>();
+builder.Services.AddScoped<PdfGeneratorService>();
+builder.Services.AddHttpContextAccessor();
+
+var app = builder.Build();
+
+// Initialize roles and seed data with error handling
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+        // Test connection before attempting migration
+        var canConnect = await dbContext.Database.CanConnectAsync();
+        if (canConnect)
+        {
+            try
+            {
+                await dbContext.Database.MigrateAsync();
+                logger.LogInformation("Database migration completed successfully");
+            }
+            catch (Exception dbEx)
+            {
+                logger.LogError(dbEx, "Database migration failed: {ErrorMessage}", dbEx.Message);
+                if (!app.Environment.IsProduction()) throw;
+            }
+
+            await DbInitializer.InitializeRolesAsync(app.Services);
+            await DbInitializer.SeedSuperAdminAsync(app.Services, builder.Configuration);
+            await DbInitializer.SeedDefaultUsersAsync(app.Services);
+            await DbInitializer.ApproveExistingUsersAsync(app.Services);
+        }
+        else
+        {
+            logger.LogWarning("Cannot connect to the database. Skipping migrations and seeding. " +
+                              "Ensure the database is online and the connection string in appsettings.Production.json is correct.");
+        }
+    }
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
+    logger.LogError(ex, "Database initialization error: {ErrorMessage}", ex.Message);
+    if (ex.InnerException != null)
+        logger.LogError(ex.InnerException, "Inner exception: {InnerErrorMessage}", ex.InnerException.Message);
+
+    // Never crash the app on startup in production due to DB issues
+    if (!app.Environment.IsProduction()) throw;
+}
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+    app.UseMigrationsEndPoint();
+}
+else
+{
+    // Production error handling with detailed logging
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+    
+    // Log unhandled exceptions
+    app.Use(async (context, next) =>
+    {
+        try
+        {
+            await next();
+        }
+        catch (Exception ex)
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Unhandled exception occurred");
+            throw;
+        }
+    });
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+app.MapRazorPages();
+
+app.Run();
+

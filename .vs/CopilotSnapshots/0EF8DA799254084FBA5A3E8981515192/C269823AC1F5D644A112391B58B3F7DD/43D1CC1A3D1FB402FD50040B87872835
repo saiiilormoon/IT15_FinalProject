@@ -1,0 +1,419 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Welcome back, @ViewBag.UserName!</h2>
+            <p>Here's your organization summary for today.</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <select class="form-select form-select-sm" style="width: auto;" id="periodFilter">
+                <option value="month">This Month</option>
+                <option value="quarter">This Quarter</option>
+                <option value="year">This Year</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <a href="@Url.Action("Operations", "Dashboard")" class="quick-action-btn">
+            <i class="fas fa-plus-circle"></i>
+            <span>New Process</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="@Url.Action("Reports", "Dashboard")" class="quick-action-btn">
+            <i class="fas fa-file-export"></i>
+            <span>Generate Report</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="@Url.Action("Performance", "Dashboard")" class="quick-action-btn">
+            <i class="fas fa-chart-bar"></i>
+            <span>View Performance</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="@Url.Action("Budget", "Dashboard")" class="quick-action-btn">
+            <i class="fas fa-peso-sign"></i>
+            <span>Budget Status</span>
+        </a>
+    </div>
+</div>
+
+<!-- Stat Cards Row -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card" onclick="window.location.href='@Url.Action("Operations", "Dashboard")'">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <h3>42</h3>
+            <p>Active Processes</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>8% this month
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card" onclick="window.location.href='@Url.Action("Reports", "Dashboard")'">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <h3>128</h3>
+            <p>Reports Generated</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>15% this month
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-building"></i>
+            </div>
+            <h3>5</h3>
+            <p>Departments</p>
+            <div class="stat-change positive">
+                <i class="fas fa-check me-1"></i>All active
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card" onclick="window.location.href='@Url.Action("Budget", "Dashboard")'">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-coins"></i>
+            </div>
+            <h3>73%</h3>
+            <p>Budget Utilized</p>
+            <div class="stat-change">
+                <i class="fas fa-info-circle me-1"></i>P1.4M remaining
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card" style="height: 320px;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Monthly Report Summary</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary active" onclick="updateChart('monthly')">Monthly</button>
+                    <button class="btn btn-outline-primary" onclick="updateChart('quarterly')">Quarterly</button>
+                </div>
+            </div>
+            <div style="height: 240px;">
+                <canvas id="reportChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card" style="height: 320px;">
+            <h5>Report Distribution</h5>
+            <div style="height: 180px;">
+                <canvas id="distributionChart"></canvas>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted d-block"><i class="fas fa-circle me-1" style="color: #1e3c72; font-size: 8px;"></i> Operational (35%)</small>
+                <small class="text-muted d-block"><i class="fas fa-circle me-1" style="color: #2a5298; font-size: 8px;"></i> Departmental (28%)</small>
+                <small class="text-muted d-block"><i class="fas fa-circle me-1" style="color: #27ae60; font-size: 8px;"></i> Performance (22%)</small>
+                <small class="text-muted d-block"><i class="fas fa-circle me-1" style="color: #f39c12; font-size: 8px;"></i> Budget (15%)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity and Departments Row -->
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Recent Activity</h5>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#activityModal">View All</button>
+            </div>
+            <ul class="activity-list">
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(30,60,114,0.1); color: #1e3c72;">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Monthly Performance Report generated</h6>
+                        <small>Admin - 2 hours ago</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(39,174,96,0.1); color: #27ae60;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Budget allocation approved</h6>
+                        <small>Accountant - 5 hours ago</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(52,152,219,0.1); color: #3498db;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>New employee onboarded</h6>
+                        <small>HR - Yesterday</small>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: rgba(241,196,15,0.1); color: #f1c40f;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <h6>Budget threshold alert - Sales</h6>
+                        <small>System - Yesterday</small>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="data-table">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Department Summary</h5>
+                <a href="@Url.Action("Performance", "Dashboard")" class="btn btn-sm btn-outline-primary">View Details</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th>Employees</th>
+                            <th>Performance</th>
+                            <th>Budget</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-users text-primary me-2"></i>Human Resources</td>
+                            <td>12</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 92%"></div>
+                                    </div>
+                                    <small>92%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">On Track</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-calculator text-success me-2"></i>Finance</td>
+                            <td>8</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 88%"></div>
+                                    </div>
+                                    <small>88%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">On Track</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-cogs text-info me-2"></i>Operations</td>
+                            <td>25</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 95%"></div>
+                                    </div>
+                                    <small>95%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">On Track</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-chart-line text-warning me-2"></i>Sales</td>
+                            <td>15</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-warning" style="width: 78%"></div>
+                                    </div>
+                                    <small>78%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-warning text-dark">Monitor</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="window.location.href='@Url.Action("Performance", "Dashboard")'">
+                            <td><i class="fas fa-laptop-code text-secondary me-2"></i>IT</td>
+                            <td>6</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: 90%"></div>
+                                    </div>
+                                    <small>90%</small>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">On Track</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Activity Log</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>Department</th>
+                                <th>Date/Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Generated Monthly Performance Report</td>
+                                <td>Admin</td>
+                                <td>All</td>
+                                <td>Feb 15, 2026 10:30 AM</td>
+                            </tr>
+                            <tr>
+                                <td>Approved Budget Allocation</td>
+                                <td>Accountant</td>
+                                <td>Finance</td>
+                                <td>Feb 15, 2026 8:15 AM</td>
+                            </tr>
+                            <tr>
+                                <td>Onboarded New Employee</td>
+                                <td>HR Manager</td>
+                                <td>HR</td>
+                                <td>Feb 14, 2026 3:45 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Budget Threshold Alert Triggered</td>
+                                <td>System</td>
+                                <td>Sales</td>
+                                <td>Feb 14, 2026 2:00 PM</td>
+                            </tr>
+                            <tr>
+                                <td>Generated Departmental Report</td>
+                                <td>HR Manager</td>
+                                <td>HR</td>
+                                <td>Feb 14, 2026 11:20 AM</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Report Summary Chart with fixed size
+    const reportCtx = document.getElementById('reportChart').getContext('2d');
+    const reportChart = new Chart(reportCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Operational',
+                data: [12, 15, 18, 14, 20, 22],
+                backgroundColor: '#1e3c72',
+                borderRadius: 4
+            }, {
+                label: 'Departmental',
+                data: [8, 10, 12, 9, 15, 14],
+                backgroundColor: '#2a5298',
+                borderRadius: 4
+            }, {
+                label: 'Performance',
+                data: [5, 7, 8, 6, 10, 9],
+                backgroundColor: '#27ae60',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+    // Distribution Chart with fixed size
+    const distCtx = document.getElementById('distributionChart').getContext('2d');
+    new Chart(distCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Operational', 'Departmental', 'Performance', 'Budget'],
+            datasets: [{
+                data: [35, 28, 22, 15],
+                backgroundColor: ['#1e3c72', '#2a5298', '#27ae60', '#f39c12'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            cutout: '60%'
+        }
+    });
+
+    // Update chart function
+    function updateChart(period) {
+        document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        if (period === 'quarterly') {
+            reportChart.data.labels = ['Q1', 'Q2', 'Q3', 'Q4'];
+            reportChart.data.datasets[0].data = [45, 52, 48, 55];
+            reportChart.data.datasets[1].data = [30, 35, 32, 38];
+            reportChart.data.datasets[2].data = [20, 25, 22, 28];
+        } else {
+            reportChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+            reportChart.data.datasets[0].data = [12, 15, 18, 14, 20, 22];
+            reportChart.data.datasets[1].data = [8, 10, 12, 9, 15, 14];
+            reportChart.data.datasets[2].data = [5, 7, 8, 6, 10, 9];
+        }
+        reportChart.update();
+    }
+</script>
+}

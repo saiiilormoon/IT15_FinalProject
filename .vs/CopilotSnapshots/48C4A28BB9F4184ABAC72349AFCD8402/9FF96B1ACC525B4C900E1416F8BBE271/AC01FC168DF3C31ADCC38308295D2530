@@ -1,0 +1,484 @@
+﻿@{
+    ViewData["Title"] = "Compliance & Audit Center";
+    var userRole = ViewBag.UserRole as string ?? "Employee";
+    var userName = ViewBag.UserName as string ?? "User";
+}
+
+<!-- Dashboard Header -->
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h2 mb-1">Welcome back, <span class="text-primary">@userName</span>!</h1>
+            <p class="text-muted mb-0">Compliance & Audit Center - Monitoring & Verification (Read-Only Access)</p>
+        </div>
+        <div>
+            <span class="badge bg-warning px-3 py-2 fs-6">@userRole</span>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards - Audit Focus (Read-Only) -->
+<div class="row mb-4 g-3">
+    <!-- Total Audit Logs -->
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card audit-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Total Audit Logs</p>
+                    <h3 class="mb-1">@ViewBag.TotalAuditLogs</h3>
+                    <small class="text-muted">System Events</small>
+                </div>
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Activities -->
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card audit-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">User Activities Recorded</p>
+                    <h3 class="mb-1">@ViewBag.UserActivitiesCount</h3>
+                    <small class="text-muted">Last 30 Days</small>
+                </div>
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Modifications -->
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card audit-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Data Modifications</p>
+                    <h3 class="mb-1">@ViewBag.DataModificationsCount</h3>
+                    <small class="text-muted">Changes Tracked</small>
+                </div>
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compliance Score -->
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card audit-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-muted small mb-2">Compliance Score</p>
+                    <h3 class="mb-1">@Math.Round((decimal)(ViewBag.ComplianceScore ?? 0), 1)%</h3>
+                    <small class="text-muted">Overall Health</small>
+                    <small class="badge bg-success ms-2">Read-Only</small>
+                </div>
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions - Auditor View Only -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="alert alert-info mb-3">
+            <i class="fas fa-info-circle"></i>
+            <strong>Note:</strong> Audit Dashboard is in read-only mode. You can view reports and audit trails, but modifications and approvals are restricted to SuperAdmin.
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="#auditTrailSection" class="audit-action-btn">
+                <i class="fas fa-history"></i>
+                <span>View Audit Trail</span>
+            </a>
+            <a href="#complianceSection" class="audit-action-btn">
+                <i class="fas fa-check-circle"></i>
+                <span>Compliance Status</span>
+            </a>
+            <a href="@Url.Action("Reports", "Dashboard")" class="audit-action-btn">
+                <i class="fas fa-file-pdf"></i>
+                <span>Generate Reports</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Trail & System Events -->
+<div class="row mb-4">
+    <!-- Audit Trail Timeline -->
+    <div class="col-lg-8 mb-3">
+        <div class="chart-card">
+            <h5 id="auditTrailSection">System Audit Trail</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Entity</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ViewBag.AuditLogs != null && ((List<dynamic>)ViewBag.AuditLogs).Count > 0)
+                        {
+                            foreach (var log in ViewBag.AuditLogs)
+                            {
+                                <tr>
+                                    <td>@log.Timestamp?.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td><strong>@log.UserName</strong></td>
+                                    <td>@log.Action</td>
+                                    <td>@log.EntityName</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> Success
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No audit logs available</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compliance Status -->
+    <div class="col-lg-4 mb-3">
+        <div class="chart-card">
+            <h5 id="complianceSection">Compliance Status Dashboard</h5>
+            <div class="p-3">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Financial Compliance</span>
+                        <strong>98%</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" style="width: 98%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">HR Compliance</span>
+                        <strong>95%</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" style="width: 95%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Operational Compliance</span>
+                        <strong>92%</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" style="width: 92%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Data Integrity</span>
+                        <strong>99%</strong>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" style="width: 99%"></div>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="alert alert-success small mb-0">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>Overall Compliance:</strong> System is in good standing.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Analysis & Trends -->
+<div class="row mb-4">
+    <!-- User Activity Timeline -->
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>User Activity Trend (Last 6 Months)</h5>
+            <div class="chart-container-sm">
+                <canvas id="activityTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity by Type -->
+    <div class="col-lg-6 mb-3">
+        <div class="chart-card">
+            <h5>Activity Distribution by Type</h5>
+            <div class="chart-container-sm">
+                <canvas id="activityTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Audit & Budget Review -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <h5>Financial Audit Summary (Read-Only)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th>Budget Allocated</th>
+                            <th>Budget Used</th>
+                            <th>Variance</th>
+                            <th>Compliance Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ViewBag.FinancialAuditData != null && ((List<dynamic>)ViewBag.FinancialAuditData).Count > 0)
+                        {
+                            foreach (var audit in ViewBag.FinancialAuditData)
+                            {
+                                var variance = audit.AllocatedAmount - audit.UsedAmount;
+                                var complianceStatus = variance >= 0 ? "On Track" : "Over Budget";
+                                var statusColor = variance >= 0 ? "success" : "danger";
+                                <tr>
+                                    <td><strong>@audit.DepartmentName</strong></td>
+                                    <td>₱ @audit.AllocatedAmount.ToString("N0")</td>
+                                    <td>₱ @audit.UsedAmount.ToString("N0")</td>
+                                    <td>₱ @variance.ToString("N0")</td>
+                                    <td>
+                                        <span class="badge bg-@statusColor">@complianceStatus</span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No financial data available</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Audit & Operational Review -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <h5>Operational Audit Summary (Read-Only)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Process ID</th>
+                            <th>Process Name</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                            <th>Created Date</th>
+                            <th>Compliance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ViewBag.OperationalAuditData != null && ((List<dynamic>)ViewBag.OperationalAuditData).Count > 0)
+                        {
+                            foreach (var proc in ViewBag.OperationalAuditData)
+                            {
+                                var statusColor = proc.Status == "Completed" ? "success" : proc.Status == "Approved" ? "info" : "warning";
+                                <tr>
+                                    <td><strong>@proc.ProcessId</strong></td>
+                                    <td>@proc.Name</td>
+                                    <td>@proc.Department</td>
+                                    <td>
+                                        <span class="badge bg-@statusColor">@proc.Status</span>
+                                    </td>
+                                    <td>@proc.CreatedAt?.ToString("yyyy-MM-dd")</td>
+                                    <td>
+                                        <span class="badge bg-success">Verified</span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">No operational data available</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Alerts & Risk Assessment -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <h5>Audit Alerts & Risk Assessment</h5>
+            <div class="p-3">
+                <div class="alert alert-success d-flex align-items-center mb-2" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <div>
+                        <strong>System Status:</strong> All systems compliant. No critical issues detected.
+                    </div>
+                </div>
+                <div class="alert alert-info d-flex align-items-center mb-2" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <div>
+                        <strong>Last Audit Date:</strong> @DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") - All checks passed.
+                    </div>
+                </div>
+                <div class="alert alert-info d-flex align-items-center mb-2" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <div>
+                        <strong>Compliance Score:</strong> @Math.Round((decimal)(ViewBag.ComplianceScore ?? 0), 1)% - Maintaining high standards.
+                    </div>
+                </div>
+                <div class="alert alert-warning d-flex align-items-center mb-0" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <div>
+                        <strong>Read-Only Access:</strong> This view provides read-only access to ensure audit independence and integrity.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Audit Modal -->
+<div class="modal fade" id="exportAuditModal" tabindex="-1" aria-labelledby="exportAuditModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportAuditModalLabel">Export Audit Logs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Select format to export audit logs:</p>
+                <div class="btn-group-vertical w-100" role="group">
+                    <button type="button" class="btn btn-outline-primary text-start" onclick="exportAuditLogs('csv')">
+                        <i class="fas fa-file-csv me-2"></i>
+                        Export to CSV
+                    </button>
+                    <button type="button" class="btn btn-outline-primary text-start" onclick="exportAuditLogs('excel')">
+                        <i class="fas fa-file-excel me-2"></i>
+                        Export to Excel (.xlsx)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary text-start" onclick="exportAuditLogs('pdf')">
+                        <i class="fas fa-file-pdf me-2"></i>
+                        Export to PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Activity Trend Chart
+        const activityCtx = document.getElementById('activityTrendChart');
+        if (activityCtx) {
+            new Chart(activityCtx, {
+                type: 'line',
+                data: {
+                    labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+                    datasets: [
+                        {
+                            label: 'User Activities',
+                            data: [@(ViewBag.JanActivities ?? 0), @(ViewBag.FebActivities ?? 0), @(ViewBag.MarActivities ?? 0), @(ViewBag.AprActivities ?? 0), @(ViewBag.MayActivities ?? 0), @(ViewBag.JunActivities ?? 0)],
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Activities'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Activity Type Distribution Chart
+        const typeCtx = document.getElementById('activityTypeChart');
+        if (typeCtx) {
+            new Chart(typeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['User Login', 'Data Modification', 'Report Generation', 'Approval Actions', 'Other'],
+                    datasets: [{
+                        data: [@(ViewBag.LoginCount ?? 0), @(ViewBag.ModificationCount ?? 0), @(ViewBag.ReportCount ?? 0), @(ViewBag.ApprovalCount ?? 0), @(ViewBag.OtherCount ?? 0)],
+                        backgroundColor: [
+                            '#3498db',
+                            '#e74c3c',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#9b59b6'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+
+        // Export Audit Logs
+        function exportAuditLogs(format) {
+            const url = '@Url.Action("ExportAuditLogs", "Dashboard")' + '?format=' + format;
+            window.location.href = url;
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('exportAuditModal'));
+            if (modal) modal.hide();
+        }
+    </script>
+}

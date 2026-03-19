@@ -1,0 +1,14 @@
+﻿{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=PRODUCTION_SERVER;Database=PRODUCTION_DB;User Id=PRODUCTION_USER;Password=PRODUCTION_PASSWORD;TrustServerCertificate=true;MultipleActiveResultSets=true"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+

@@ -1,0 +1,232 @@
+﻿using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using CVM_FinalProject.Models.ViewModels;
+using Microsoft.EntityFrameworkCore;
+
+namespace CVM_FinalProject.Services
+{
+    /// <summary>
+    /// Service for managing performance records
+    /// </summary>
+    public class PerformanceService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<PerformanceService> _logger;
+
+        public PerformanceService(ApplicationDbContext context, ILogger<PerformanceService> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        // Record performance evaluation with task metrics and rating
+        public async Task<PerformanceRecord> RecordPerformanceAsync(
+            string employeeId, 
+            string evaluationPeriod, 
+            int tasksCompleted, 
+            int tasksPending, 
+            int performanceRating,
+            string? remarks = null)
+        {
+            try
+            {
+                // Verify employee exists
+                var employee = await _context.Employees
+                    .Include(e => e.Department)
+                    .FirstOrDefaultAsync(e => e.UserId == employeeId);
+                
+                if (employee == null)
+                    throw new InvalidOperationException("Employee not found");
+
+                var record = new PerformanceRecord
+                {
+                    EmployeeId = employeeId,
+                    EvaluationPeriod = evaluationPeriod,
+                    TasksCompleted = tasksCompleted,
+                    TasksPending = tasksPending,
+                    PerformanceRating = performanceRating,
+                    Remarks = remarks,
+                    RecordedAt = DateTime.UtcNow
+                };
+
+                _context.PerformanceRecords.Add(record);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Performance record created for employee: {employeeId} | Tasks: {tasksCompleted} completed, {tasksPending} pending | Rating: {performanceRating}/5");
+                return record;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording performance");
+                throw;
+            }
+        }
+
+        // Get performance records for employee
+        public async Task<List<PerformanceRecord>> GetEmployeePerformanceAsync(string employeeId)
+        {
+            try
+            {
+                return await _context.PerformanceRecords
+                    .Where(p => p.EmployeeId == employeeId)
+                    .OrderByDescending(p => p.RecordedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting employee performance records");
+                throw;
+            }
+        }
+
+        // Get all performance records
+        public async Task<List<PerformanceRecord>> GetAllPerformanceRecordsAsync()
+        {
+            try
+            {
+                return await _context.PerformanceRecords
+                    .Include(p => p.Employee)
+                    .OrderByDescending(p => p.RecordedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all performance records");
+                throw;
+            }
+        }
+
+        // Get performance by department
+        public async Task<List<DepartmentPerformanceViewModel>> GetDepartmentPerformanceAsync(int departmentId)
+        {
+            try
+            {
+                var employees = await _context.Employees
+                    .Where(e => e.DepartmentId == departmentId)
+                    .Include(e => e.User)
+                    .Include(e => e.PerformanceRecords)
+                    .ToListAsync();
+
+                return employees.Select(e => new DepartmentPerformanceViewModel
+                {
+                    EmployeeName = e.User?.FullName ?? "Unknown",
+                    Position = e.Position ?? "N/A",
+                    TotalEvaluations = e.PerformanceRecords?.Count ?? 0,
+                    LastEvaluation = e.PerformanceRecords?
+                        .OrderByDescending(p => p.RecordedAt)
+                        .FirstOrDefault()?.EvaluationPeriod,
+                    LastRemarks = e.PerformanceRecords?
+                        .OrderByDescending(p => p.RecordedAt)
+                        .FirstOrDefault()?.Remarks
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting department performance");
+                throw;
+            }
+        }
+
+        // Get performance summary for reporting
+        public async Task<PerformanceSummaryViewModel> GetPerformanceSummaryAsync()
+        {
+            try
+            {
+                var totalRecords = await _context.PerformanceRecords.CountAsync();
+                var recordsThisMonth = await _context.PerformanceRecords
+                    .Where(p => p.RecordedAt.Month == DateTime.UtcNow.Month 
+                        && p.RecordedAt.Year == DateTime.UtcNow.Year)
+                    .CountAsync();
+
+                var employeesWithRecords = await _context.Employees
+                    .Include(e => e.PerformanceRecords)
+                    .Where(e => e.PerformanceRecords!.Count > 0)
+                    .CountAsync();
+
+                var totalEmployees = await _context.Employees.CountAsync();
+
+                return new PerformanceSummaryViewModel
+                {
+                    TotalRecords = totalRecords,
+                    RecordsThisMonth = recordsThisMonth,
+                    EmployeesEvaluated = employeesWithRecords,
+                    TotalEmployees = totalEmployees,
+                    EvaluationCoverage = totalEmployees > 0 
+                        ? (employeesWithRecords / (double)totalEmployees) * 100 
+                        : 0
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting performance summary");
+                throw;
+            }
+        }
+
+        // Update performance record
+        public async Task<PerformanceRecord> UpdatePerformanceAsync(int performanceId, string evaluationPeriod, string remarks)
+        {
+            try
+            {
+                var record = await _context.PerformanceRecords.FindAsync(performanceId);
+                if (record == null)
+                    throw new InvalidOperationException("Performance record not found");
+
+                record.EvaluationPeriod = evaluationPeriod;
+                record.Remarks = remarks;
+
+                _context.PerformanceRecords.Update(record);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Performance record updated: {performanceId}");
+                return record;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating performance record");
+                throw;
+            }
+        }
+
+        // Delete performance record
+        public async Task DeletePerformanceAsync(int performanceId)
+        {
+            try
+            {
+                var record = await _context.PerformanceRecords.FindAsync(performanceId);
+                if (record == null)
+                    throw new InvalidOperationException("Performance record not found");
+
+                _context.PerformanceRecords.Remove(record);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Performance record deleted: {performanceId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting performance record");
+                throw;
+            }
+        }
+    }
+
+    // View model for department performance
+    public class DepartmentPerformanceViewModel
+    {
+        public string EmployeeName { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public int TotalEvaluations { get; set; }
+        public string? LastEvaluation { get; set; }
+        public string? LastRemarks { get; set; }
+    }
+
+    // View model for performance summary
+    public class PerformanceSummaryViewModel
+    {
+        public int TotalRecords { get; set; }
+        public int RecordsThisMonth { get; set; }
+        public int EmployeesEvaluated { get; set; }
+        public int TotalEmployees { get; set; }
+        public double EvaluationCoverage { get; set; }
+    }
+}

@@ -1,0 +1,490 @@
+﻿@{
+    ViewData["Title"] = "Departmental Reports";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Departmental Processing Reports</h2>
+            <p>Generate and manage department-wise reports and analytics.</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                <i class="fas fa-plus me-2"></i>Generate Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <h3>256</h3>
+            <p>Total Reports</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <h3>48</h3>
+            <p>This Month</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h3>5</h3>
+            <p>Scheduled</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-download"></i>
+            </div>
+            <h3>1,204</h3>
+            <p>Downloads</p>
+        </div>
+    </div>
+</div>
+
+<!-- Report Type Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="chart-card text-center h-100" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#generateReportModal" onclick="setReportType('operational')">
+            <div style="font-size: 2.5rem; color: #1e3c72; margin-bottom: 12px;">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <h5 class="mb-2">Operational Reports</h5>
+            <p class="text-muted small mb-3">Daily operations and process status reports</p>
+            <span class="badge bg-primary">45 Reports</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="chart-card text-center h-100" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#generateReportModal" onclick="setReportType('departmental')">
+            <div style="font-size: 2.5rem; color: #27ae60; margin-bottom: 12px;">
+                <i class="fas fa-building"></i>
+            </div>
+            <h5 class="mb-2">Departmental Reports</h5>
+            <p class="text-muted small mb-3">Department-wise performance and activity</p>
+            <span class="badge bg-success">38 Reports</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="chart-card text-center h-100" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#generateReportModal" onclick="setReportType('summary')">
+            <div style="font-size: 2.5rem; color: #f39c12; margin-bottom: 12px;">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <h5 class="mb-2">Summary Reports</h5>
+            <p class="text-muted small mb-3">Executive summary and KPI dashboards</p>
+            <span class="badge bg-warning text-dark">28 Reports</span>
+        </div>
+    </div>
+</div>
+
+<!-- Department Report Status -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Reports by User Role</h5>
+                <select class="form-select form-select-sm" style="width: auto;">
+                    <option>This Month</option>
+                    <option>Last Month</option>
+                    <option>This Quarter</option>
+                </select>
+            </div>
+            <div class="chart-container">
+                <canvas id="deptReportChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <h5>Report Types Distribution</h5>
+            <div class="chart-container-sm">
+                <canvas id="reportTypeChart"></canvas>
+            </div>
+            <div class="mt-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #1e3c72; font-size: 8px;"></i> Operational</small>
+                    <small class="fw-semibold">45</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #27ae60; font-size: 8px;"></i> Departmental</small>
+                    <small class="fw-semibold">38</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted"><i class="fas fa-circle me-1" style="color: #f39c12; font-size: 8px;"></i> Summary</small>
+                    <small class="fw-semibold">28</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Reports Table -->
+<div class="data-table">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <h5 class="mb-0">Recent Reports</h5>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <select class="form-select form-select-sm" style="width: auto;" id="roleFilter" onchange="filterReports()">
+                <option value="">All Roles</option>
+                <option value="SuperAdmin">SuperAdmin</option>
+                <option value="Admin">Admin</option>
+                <option value="Accountant">Accountant</option>
+                <option value="HR">HR</option>
+                <option value="Employee">Employee</option>
+                <option value="Auditor">Auditor</option>
+            </select>
+            <select class="form-select form-select-sm" style="width: auto;" id="typeFilter" onchange="filterReports()">
+                <option value="">All Types</option>
+                <option>Operational</option>
+                <option>Departmental</option>
+                <option>Summary</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0" id="reportsTable">
+            <thead>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Type</th>
+                    <th>Generated By</th>
+                    <th>Role</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <i class="fas fa-file-pdf text-danger me-2"></i>
+                        <span class="fw-semibold">Q1 Financial Summary</span>
+                    </td>
+                    <td><span class="badge bg-warning text-dark">Summary</span></td>
+                    <td>System Administrator</td>
+                    <td><span class="badge bg-primary">Admin</span></td>
+                    <td>Feb 15, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewReport(1)"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-success" title="Download" onclick="downloadReport(1)"><i class="fas fa-download"></i></button>
+                            <button class="btn btn-outline-info" title="Share" onclick="shareReport(1)"><i class="fas fa-share"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <i class="fas fa-file-excel text-success me-2"></i>
+                        <span class="fw-semibold">Employee Attendance Report</span>
+                    </td>
+                    <td><span class="badge bg-success">Departmental</span></td>
+                    <td>Maria Santos</td>
+                    <td><span class="badge bg-info">HR</span></td>
+                    <td>Feb 14, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewReport(2)"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-success" title="Download" onclick="downloadReport(2)"><i class="fas fa-download"></i></button>
+                            <button class="btn btn-outline-info" title="Share" onclick="shareReport(2)"><i class="fas fa-share"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <i class="fas fa-file-alt text-primary me-2"></i>
+                        <span class="fw-semibold">Daily Operations Log</span>
+                    </td>
+                    <td><span class="badge bg-primary">Operational</span></td>
+                    <td>Juan Dela Cruz</td>
+                    <td><span class="badge bg-secondary">Employee</span></td>
+                    <td>Feb 14, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewReport(3)"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-success" title="Download" onclick="downloadReport(3)"><i class="fas fa-download"></i></button>
+                            <button class="btn btn-outline-info" title="Share" onclick="shareReport(3)"><i class="fas fa-share"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <i class="fas fa-file-pdf text-danger me-2"></i>
+                        <span class="fw-semibold">Budget Utilization Report</span>
+                    </td>
+                    <td><span class="badge bg-success">Departmental</span></td>
+                    <td>Pedro Reyes</td>
+                    <td><span class="badge bg-success">Accountant</span></td>
+                    <td>Feb 13, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewReport(4)"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-success" title="Download" onclick="downloadReport(4)"><i class="fas fa-download"></i></button>
+                            <button class="btn btn-outline-info" title="Share" onclick="shareReport(4)"><i class="fas fa-share"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <i class="fas fa-file-alt text-primary me-2"></i>
+                        <span class="fw-semibold">Compliance Audit Report</span>
+                    </td>
+                    <td><span class="badge bg-primary">Operational</span></td>
+                    <td>Jose Mendoza</td>
+                    <td><span class="badge bg-warning text-dark">Auditor</span></td>
+                    <td>Feb 13, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewReport(5)"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-success" title="Download" onclick="downloadReport(5)"><i class="fas fa-download"></i></button>
+                            <button class="btn btn-outline-info" title="Share" onclick="shareReport(5)"><i class="fas fa-share"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <i class="fas fa-file-pdf text-danger me-2"></i>
+                        <span class="fw-semibold">System Activity Summary</span>
+                    </td>
+                    <td><span class="badge bg-warning text-dark">Summary</span></td>
+                    <td>System Administrator</td>
+                    <td><span class="badge bg-danger">SuperAdmin</span></td>
+                    <td>Feb 12, 2026</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" title="View" onclick="viewReport(6)"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-success" title="Download" onclick="downloadReport(6)"><i class="fas fa-download"></i></button>
+                            <button class="btn btn-outline-info" title="Share" onclick="shareReport(6)"><i class="fas fa-share"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-end mb-0">
+            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+            <li class="page-item"><a class="page-link" href="#">2</a></li>
+            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+        </ul>
+    </nav>
+</div>
+
+<!-- Generate Report Modal -->
+<div class="modal fade" id="generateReportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-export me-2 text-primary"></i>Generate Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reportForm">
+                    <div class="mb-3">
+                        <label class="form-label">Report Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="reportTypeSelect" required>
+                            <option value="">Select Report Type</option>
+                            <option value="operational">Operational Report</option>
+                            <option value="departmental">Departmental Report</option>
+                            <option value="summary">Summary Report</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">User Role <span class="text-danger">*</span></label>
+                        <select class="form-select" id="userRoleSelect" required>
+                            <option value="">Select User Role</option>
+                            <option value="all">All Roles</option>
+                            <option value="superadmin">SuperAdmin</option>
+                            <option value="admin">Admin</option>
+                            <option value="accountant">Accountant</option>
+                            <option value="hr">HR</option>
+                            <option value="employee">Employee</option>
+                            <option value="auditor">Auditor</option>
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">From Date</label>
+                            <input type="date" class="form-control" value="2026-02-01">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">To Date</label>
+                            <input type="date" class="form-control" value="2026-02-15">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Report Title</label>
+                        <input type="text" class="form-control" placeholder="Enter report title">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Export Format</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="format" value="pdf" checked>
+                                <label class="form-check-label"><i class="fas fa-file-pdf text-danger me-1"></i>PDF</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="format" value="excel">
+                                <label class="form-check-label"><i class="fas fa-file-excel text-success me-1"></i>Excel</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="format" value="csv">
+                                <label class="form-check-label"><i class="fas fa-file-csv text-info me-1"></i>CSV</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="generateReport()">
+                    <i class="fas fa-download me-1"></i>Generate & Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Reports by Role Chart - properly constrained
+    const deptCtx = document.getElementById('deptReportChart').getContext('2d');
+    new Chart(deptCtx, {
+        type: 'bar',
+        data: {
+            labels: ['SuperAdmin', 'Admin', 'Accountant', 'HR', 'Employee', 'Auditor'],
+            datasets: [{
+                label: 'Operational',
+                data: [5, 12, 8, 10, 15, 6],
+                backgroundColor: '#1e3c72',
+                borderRadius: 4,
+                barThickness: 'flex',
+                maxBarThickness: 20
+            }, {
+                label: 'Departmental',
+                data: [3, 10, 12, 14, 8, 5],
+                backgroundColor: '#27ae60',
+                borderRadius: 4,
+                barThickness: 'flex',
+                maxBarThickness: 20
+            }, {
+                label: 'Summary',
+                data: [8, 6, 5, 3, 2, 4],
+                backgroundColor: '#f39c12',
+                borderRadius: 4,
+                barThickness: 'flex',
+                maxBarThickness: 20
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'top', 
+                    labels: { 
+                        boxWidth: 12, 
+                        padding: 15,
+                        font: { size: 11 },
+                        usePointStyle: true
+                    } 
+                }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: { font: { size: 10 } }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { font: { size: 10 } }
+                }
+            }
+        }
+    });
+
+    // Report Type Chart - properly constrained doughnut
+    const typeCtx = document.getElementById('reportTypeChart').getContext('2d');
+    new Chart(typeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Operational', 'Departmental', 'Summary'],
+            datasets: [{
+                data: [45, 38, 28],
+                backgroundColor: ['#1e3c72', '#27ae60', '#f39c12'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            var percentage = Math.round((context.raw / total) * 100);
+                            return context.label + ': ' + context.raw + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            },
+            cutout: '55%'
+        }
+    });
+
+    function setReportType(type) {
+        setTimeout(() => {
+            document.getElementById('reportTypeSelect').value = type;
+        }, 100);
+    }
+
+    function filterReports() {
+        const role = document.getElementById('roleFilter').value;
+        const type = document.getElementById('typeFilter').value;
+        const rows = document.querySelectorAll('#reportsTable tbody tr');
+        
+        rows.forEach(row => {
+            const rowRole = row.cells[3].textContent.trim();
+            const rowType = row.cells[1].textContent.trim();
+            const matchRole = !role || rowRole.includes(role);
+            const matchType = !type || rowType.includes(type);
+            row.style.display = (matchRole && matchType) ? '' : 'none';
+        });
+    }
+
+    function viewReport(id) {
+        alert('Opening report viewer for Report #' + id);
+    }
+
+    function downloadReport(id) {
+        alert('Downloading Report #' + id + '...');
+    }
+
+    function shareReport(id) {
+        alert('Share Report #' + id + '\n\nEmail sharing dialog will open.');
+    }
+
+    function generateReport() {
+        alert('Generating report...\n\nYour report will be downloaded shortly.');
+        bootstrap.Modal.getInstance(document.getElementById('generateReportModal')).hide();
+    }
+</script>
+}

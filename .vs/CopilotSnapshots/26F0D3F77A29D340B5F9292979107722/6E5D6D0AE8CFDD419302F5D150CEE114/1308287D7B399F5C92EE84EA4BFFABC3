@@ -1,0 +1,104 @@
+﻿@{
+    ViewData["Title"] = "Operations";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <h2>Operations Management</h2>
+    <p>Manage operational processes and workflows.</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <h3>124</h3>
+            <p>Active Processes</p>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-check-double"></i>
+            </div>
+            <h3>89</h3>
+            <p>Completed Today</p>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h3>35</h3>
+            <p>Pending Approval</p>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-sync-alt"></i>
+            </div>
+            <h3>12</h3>
+            <p>In Progress</p>
+        </div>
+    </div>
+</div>
+
+<div class="data-table">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Operational Processes</h5>
+        <button class="btn btn-primary"><i class="fas fa-plus me-2"></i>New Process</button>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Process ID</th>
+                    <th>Process Name</th>
+                    <th>Department</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>#OP-001</td>
+                    <td>Invoice Processing</td>
+                    <td>Finance</td>
+                    <td>John Smith</td>
+                    <td><span class="badge-status bg-success text-white">Active</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>#OP-002</td>
+                    <td>Leave Approval</td>
+                    <td>HR</td>
+                    <td>Jane Doe</td>
+                    <td><span class="badge-status bg-warning text-dark">Pending</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>#OP-003</td>
+                    <td>Inventory Check</td>
+                    <td>Operations</td>
+                    <td>Mike Johnson</td>
+                    <td><span class="badge-status bg-info text-white">In Progress</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

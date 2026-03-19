@@ -1,0 +1,228 @@
+﻿using CVM_FinalProject.Data;
+using CVM_FinalProject.Models;
+using CVM_FinalProject.Models.ViewModels;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+
+namespace CVM_FinalProject.Services
+{
+    public class ReportingService
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ReportingService(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        /// <summary>
+        /// Get operational processes grouped by department
+        /// </summary>
+        public async Task<OperationalProcessesByDepartmentViewModel> GetOperationalProcessesByDepartmentAsync()
+        {
+            var processes = await _context.OperationalProcesses.ToListAsync();
+            var departments = await _context.Departments.ToListAsync();
+
+            var departmentData = new List<DepartmentProcessData>();
+
+            foreach (var dept in departments)
+            {
+                var deptProcesses = processes.Where(p => p.DepartmentId == dept.Id).ToList();
+                
+                if (deptProcesses.Any())
+                {
+                    var completed = deptProcesses.Count(p => p.Status == ProcessStatus.Completed);
+                    var pending = deptProcesses.Count(p => p.Status == ProcessStatus.Pending);
+                    var approved = deptProcesses.Count(p => p.Status == ProcessStatus.Approved);
+
+                    departmentData.Add(new DepartmentProcessData
+                    {
+                        DepartmentName = dept.Name,
+                        TotalCount = deptProcesses.Count,
+                        CompletedCount = completed,
+                        PendingCount = pending,
+                        ApprovedCount = approved,
+                        CompletionPercentage = deptProcesses.Count > 0 ? (completed * 100m) / deptProcesses.Count : 0
+                    });
+                }
+            }
+
+            var totalProcesses = processes.Count;
+            var totalCompleted = processes.Count(p => p.Status == ProcessStatus.Completed);
+
+            return new OperationalProcessesByDepartmentViewModel
+            {
+                Departments = departmentData.OrderByDescending(d => d.CompletionPercentage).ToList(),
+                TotalProcesses = totalProcesses,
+                CompletedProcesses = totalCompleted,
+                PendingProcesses = processes.Count(p => p.Status == ProcessStatus.Pending),
+                CompletionRate = totalProcesses > 0 ? (totalCompleted * 100m) / totalProcesses : 0
+            };
+        }
+
+        /// <summary>
+        /// Get employee task performance metrics
+        /// </summary>
+        public async Task<EmployeeTaskPerformanceViewModel> GetEmployeeTaskPerformanceAsync()
+        {
+            var employees = await _context.Employees.Include(e => e.Department).ToListAsync();
+            var processes = await _context.OperationalProcesses.ToListAsync();
+
+            var employeeData = new List<EmployeePerformanceData>();
+
+            foreach (var emp in employees)
+            {
+                var empProcesses = processes.Where(p => p.AssignedToUserId == emp.UserId).ToList();
+                
+                if (empProcesses.Any())
+                {
+                    var completed = empProcesses.Count(p => p.Status == ProcessStatus.Completed);
+                    var completionRate = (completed * 100m) / empProcesses.Count;
+
+                    // Calculate average days to complete
+                    var completedProcesses = empProcesses.Where(p => p.Status == ProcessStatus.Completed).ToList();
+                    var avgDaysToComplete = 0;
+                    if (completedProcesses.Any())
+                    {
+                        avgDaysToComplete = (int)completedProcesses.Average(p => 
+                            (p.CompletedAt ?? DateTime.UtcNow - p.CreatedAt.Date).Days);
+                    }
+
+                    employeeData.Add(new EmployeePerformanceData
+                    {
+                        EmployeeName = $"{emp.FirstName} {emp.LastName}",
+                        Department = emp.Department?.Name ?? "Unassigned",
+                        ProcessesAssigned = empProcesses.Count,
+                        ProcessesCompleted = completed,
+                        ProcessesPending = empProcesses.Count(p => p.Status == ProcessStatus.Pending),
+                        CompletionRate = completionRate,
+                        AverageDaysToComplete = avgDaysToComplete
+                    });
+                }
+            }
+
+            var avgCompletion = employeeData.Any() ? employeeData.Average(e => e.CompletionRate) : 0;
+
+            return new EmployeeTaskPerformanceViewModel
+            {
+                Employees = employeeData.OrderByDescending(e => e.CompletionRate).ToList(),
+                TotalEmployees = employees.Count,
+                TotalProcessesAssigned = processes.Count,
+                AverageCompletionRate = avgCompletion
+            };
+        }
+
+        /// <summary>
+        /// Get completed vs pending processes comparison
+        /// </summary>
+        public async Task<ProcessStatusComparisonViewModel> GetProcessStatusComparisonAsync()
+        {
+            var processes = await _context.OperationalProcesses.ToListAsync();
+            var completed = processes.Count(p => p.Status == ProcessStatus.Completed);
+            var pending = processes.Count(p => p.Status == ProcessStatus.Pending);
+            var approved = processes.Count(p => p.Status == ProcessStatus.Approved);
+
+            // Group by month for trend analysis
+            var monthlyData = processes
+                .GroupBy(p => new { p.CreatedAt.Year, p.CreatedAt.Month })
+                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
+                .Select(g => new MonthlyProcessData
+                {
+                    Month = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"),
+                    Completed = g.Count(p => p.Status == ProcessStatus.Completed),
+                    Pending = g.Count(p => p.Status == ProcessStatus.Pending),
+                    Approved = g.Count(p => p.Status == ProcessStatus.Approved)
+                })
+                .ToList();
+
+            // Keep only last 12 months
+            if (monthlyData.Count > 12)
+            {
+                monthlyData = monthlyData.TakeLast(12).ToList();
+            }
+
+            return new ProcessStatusComparisonViewModel
+            {
+                CompletedCount = completed,
+                PendingCount = pending,
+                ApprovedCount = approved,
+                TotalProcesses = processes.Count,
+                MonthlyData = monthlyData,
+                CompletionPercentage = processes.Count > 0 ? (completed * 100m) / processes.Count : 0
+            };
+        }
+
+        /// <summary>
+        /// Get department activity summary
+        /// </summary>
+        public async Task<DepartmentActivitySummaryViewModel> GetDepartmentActivitySummaryAsync()
+        {
+            var departments = await _context.Departments.ToListAsync();
+            var employees = await _context.Employees.ToListAsync();
+            var processes = await _context.OperationalProcesses.ToListAsync();
+            var budgets = await _context.Budgets.ToListAsync();
+
+            var activityData = new List<DepartmentActivityData>();
+
+            foreach (var dept in departments)
+            {
+                var deptEmployees = employees.Where(e => e.DepartmentId == dept.Id).ToList();
+                var deptProcesses = processes.Where(p => p.DepartmentId == dept.Id).ToList();
+                var deptBudget = budgets.FirstOrDefault(b => b.DepartmentId == dept.Id);
+
+                var completed = deptProcesses.Count(p => p.Status == ProcessStatus.Completed);
+                var pending = deptProcesses.Count(p => p.Status == ProcessStatus.Pending);
+
+                // Activity index: weighted score based on activity
+                var activityIndex = (deptProcesses.Count * 0.5m) + 
+                                   (completed * 0.3m) + 
+                                   (deptEmployees.Count * 0.2m);
+
+                activityData.Add(new DepartmentActivityData
+                {
+                    DepartmentName = dept.Name,
+                    EmployeeCount = deptEmployees.Count,
+                    ProcessCount = deptProcesses.Count,
+                    CompletedCount = completed,
+                    PendingCount = pending,
+                    BudgetAllocated = deptBudget?.AllocatedAmount ?? 0,
+                    BudgetUsed = deptBudget?.UsedAmount ?? 0,
+                    ActivityIndex = activityIndex
+                });
+            }
+
+            return new DepartmentActivitySummaryViewModel
+            {
+                Departments = activityData.OrderByDescending(d => d.ActivityIndex).ToList(),
+                TotalDepartments = departments.Count,
+                TotalEmployees = employees.Count,
+                TotalProcesses = processes.Count
+            };
+        }
+
+        /// <summary>
+        /// Get complete report dashboard
+        /// </summary>
+        public async Task<ReportDashboardViewModel> GetReportDashboardAsync()
+        {
+            var processesByDept = await GetOperationalProcessesByDepartmentAsync();
+            var employeePerf = await GetEmployeeTaskPerformanceAsync();
+            var statusComparison = await GetProcessStatusComparisonAsync();
+            var activitySummary = await GetDepartmentActivitySummaryAsync();
+
+            return new ReportDashboardViewModel
+            {
+                ProcessesByDepartment = processesByDept,
+                EmployeePerformance = employeePerf,
+                StatusComparison = statusComparison,
+                ActivitySummary = activitySummary,
+                TotalProcesses = processesByDept.TotalProcesses,
+                CompletedProcesses = processesByDept.CompletedProcesses,
+                PendingProcesses = processesByDept.PendingProcesses,
+                OverallCompletionRate = processesByDept.CompletionRate,
+                TotalEmployees = employeePerf.TotalEmployees,
+                TotalDepartments = activitySummary.TotalDepartments
+            };
+        }
+    }
+}

@@ -1,0 +1,4 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using CVM_FinalProject.Areas.Identity
+@using CVM_FinalProject.Areas.Identity.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers

@@ -1,0 +1,378 @@
+﻿@{
+    ViewData["Title"] = "Performance Monitoring";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Performance Monitoring</h2>
+            <p>Track employee and departmental performance metrics.</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <select class="form-select form-select-sm" style="width: auto;" id="periodSelect" onchange="updatePeriod()">
+                <option value="month">This Month</option>
+                <option value="quarter">This Quarter</option>
+                <option value="year">This Year</option>
+            </select>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="fas fa-download me-1"></i>Export
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Performance KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <h3>89%</h3>
+            <p>Overall Performance</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>5% from last month
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-bullseye"></i>
+            </div>
+            <h3>85%</h3>
+            <p>Goals Achieved</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>8% improvement
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <h3>96%</h3>
+            <p>Attendance Rate</p>
+            <div class="stat-change positive">
+                <i class="fas fa-check me-1"></i>Above target
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-tasks"></i>
+            </div>
+            <h3>92%</h3>
+            <p>Task Completion</p>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>3% this week
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Performance Trend</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary active" onclick="setChartView('overall')">Overall</button>
+                    <button class="btn btn-outline-primary" onclick="setChartView('department')">By Dept</button>
+                </div>
+            </div>
+            <canvas id="performanceTrendChart" height="110"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <h5>Department Ranking</h5>
+            <canvas id="deptRankingChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Department Performance Table -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="data-table">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Department Performance</h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshData()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th>Score</th>
+                            <th>Trend</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="cursor: pointer;" onclick="showDeptDetails('Operations')">
+                            <td><i class="fas fa-cogs text-info me-2"></i>Operations</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; width: 100px;">
+                                        <div class="progress-bar bg-success" style="width: 95%"></div>
+                                    </div>
+                                    <strong>95%</strong>
+                                </div>
+                            </td>
+                            <td><span class="text-success"><i class="fas fa-arrow-up"></i> +3%</span></td>
+                            <td><span class="badge bg-success">Excellent</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="showDeptDetails('HR')">
+                            <td><i class="fas fa-users text-primary me-2"></i>Human Resources</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; width: 100px;">
+                                        <div class="progress-bar bg-success" style="width: 92%"></div>
+                                    </div>
+                                    <strong>92%</strong>
+                                </div>
+                            </td>
+                            <td><span class="text-success"><i class="fas fa-arrow-up"></i> +5%</span></td>
+                            <td><span class="badge bg-success">Excellent</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="showDeptDetails('IT')">
+                            <td><i class="fas fa-laptop-code text-secondary me-2"></i>IT</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; width: 100px;">
+                                        <div class="progress-bar bg-success" style="width: 90%"></div>
+                                    </div>
+                                    <strong>90%</strong>
+                                </div>
+                            </td>
+                            <td><span class="text-success"><i class="fas fa-arrow-up"></i> +2%</span></td>
+                            <td><span class="badge bg-success">Good</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="showDeptDetails('Finance')">
+                            <td><i class="fas fa-calculator text-success me-2"></i>Finance</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; width: 100px;">
+                                        <div class="progress-bar bg-success" style="width: 88%"></div>
+                                    </div>
+                                    <strong>88%</strong>
+                                </div>
+                            </td>
+                            <td><span class="text-muted"><i class="fas fa-minus"></i> 0%</span></td>
+                            <td><span class="badge bg-success">Good</span></td>
+                        </tr>
+                        <tr style="cursor: pointer;" onclick="showDeptDetails('Sales')">
+                            <td><i class="fas fa-chart-line text-warning me-2"></i>Sales</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; width: 100px;">
+                                        <div class="progress-bar bg-warning" style="width: 78%"></div>
+                                    </div>
+                                    <strong>78%</strong>
+                                </div>
+                            </td>
+                            <td><span class="text-danger"><i class="fas fa-arrow-down"></i> -2%</span></td>
+                            <td><span class="badge bg-warning text-dark">Monitor</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="chart-card">
+            <h5>Top Performers</h5>
+            <ul class="activity-list">
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: linear-gradient(135deg, #1e3c72, #2a5298); color: white;">
+                        1
+                    </div>
+                    <div class="activity-content flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Maria Santos</h6>
+                                <small class="text-muted">Finance</small>
+                            </div>
+                            <span class="badge bg-success">98%</span>
+                        </div>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: linear-gradient(135deg, #27ae60, #2ecc71); color: white;">
+                        2
+                    </div>
+                    <div class="activity-content flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Pedro Reyes</h6>
+                                <small class="text-muted">Operations</small>
+                            </div>
+                            <span class="badge bg-success">96%</span>
+                        </div>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white;">
+                        3
+                    </div>
+                    <div class="activity-content flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Juan Dela Cruz</h6>
+                                <small class="text-muted">HR</small>
+                            </div>
+                            <span class="badge bg-success">95%</span>
+                        </div>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: #e1e5eb; color: #666;">
+                        4
+                    </div>
+                    <div class="activity-content flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Jose Mendoza</h6>
+                                <small class="text-muted">IT</small>
+                            </div>
+                            <span class="badge bg-primary">93%</span>
+                        </div>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon" style="background: #e1e5eb; color: #666;">
+                        5
+                    </div>
+                    <div class="activity-content flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Ana Garcia</h6>
+                                <small class="text-muted">Sales</small>
+                            </div>
+                            <span class="badge bg-primary">91%</span>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Export Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-danger" onclick="exportReport('pdf')">
+                        <i class="fas fa-file-pdf me-2"></i>Export as PDF
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportReport('excel')">
+                        <i class="fas fa-file-excel me-2"></i>Export as Excel
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="exportReport('csv')">
+                        <i class="fas fa-file-csv me-2"></i>Export as CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Performance Trend Chart
+    const trendCtx = document.getElementById('performanceTrendChart').getContext('2d');
+    const trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Overall Performance',
+                data: [82, 84, 85, 87, 88, 89],
+                borderColor: '#1e3c72',
+                backgroundColor: 'rgba(30, 60, 114, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3
+            }, {
+                label: 'Target',
+                data: [85, 85, 85, 85, 85, 85],
+                borderColor: '#e74c3c',
+                borderDash: [5, 5],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+            scales: {
+                y: { min: 70, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Department Ranking Chart
+    const rankCtx = document.getElementById('deptRankingChart').getContext('2d');
+    new Chart(rankCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Operations', 'HR', 'IT', 'Finance', 'Sales'],
+            datasets: [{
+                data: [95, 92, 90, 88, 78],
+                backgroundColor: ['#1e3c72', '#2a5298', '#3498db', '#27ae60', '#f39c12'],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } },
+                y: { grid: { display: false } }
+            }
+        }
+    });
+
+    function setChartView(view) {
+        document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        // Update chart based on view
+    }
+
+    function updatePeriod() {
+        alert('Updating data for selected period...');
+    }
+
+    function refreshData() {
+        alert('Refreshing performance data...');
+    }
+
+    function showDeptDetails(dept) {
+        alert('Showing details for ' + dept + ' department');
+    }
+
+    function exportReport(format) {
+        alert('Exporting performance report as ' + format.toUpperCase());
+        bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+    }
+</script>
+}

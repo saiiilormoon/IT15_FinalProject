@@ -1,0 +1,639 @@
+﻿@model List<PerformanceRecord>
+@using CVM_FinalProject.Models
+@using CVM_FinalProject.Services
+@{
+    ViewData["Title"] = "Performance Monitoring";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+    var perfSummary = ViewBag.PerfSummary as PerformanceSummaryViewModel;
+}
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2>Performance Monitoring</h2>
+            <p>Track and monitor employee performance evaluations</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPerformanceModal">
+            <i class="fas fa-plus me-1"></i>Record Evaluation
+        </button>
+    </div>
+</div>
+
+<!-- Performance Summary Cards -->
+@if (perfSummary != null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>@perfSummary.TotalRecords</h3>
+                <p>Total Records</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h3>@perfSummary.RecordsThisMonth</h3>
+                <p>This Month</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>@perfSummary.EmployeesEvaluated</h3>
+                <p>Evaluated</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <h3>@perfSummary.EvaluationCoverage.ToString("F1")%</h3>
+                <p>Coverage</p>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add Performance Modal -->
+<div class="modal fade" id="addPerformanceModal" tabindex="-1" aria-labelledby="addPerformanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addPerformanceModalLabel">
+                    <i class="fas fa-user-check me-2"></i>Record Employee Performance
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-action="RecordPerformance" id="performanceForm">
+                <div class="modal-body">
+                    <!-- Auto-Save Loading Indicator -->
+                    <div class="alert alert-info alert-dismissible fade show" id="autoSaveAlert" style="display: none;" role="alert">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border spinner-border-sm me-2" role="status" id="savingSpinner">
+                                <span class="visually-hidden">Saving...</span>
+                            </div>
+                            <span id="autoSaveMessage">Saving performance record...</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+
+                    <div class="row">
+                        <!-- Employee Selection with Enhanced Dropdown -->
+                        <div class="col-md-6 mb-3">
+                            <label for="employeeId" class="form-label fw-bold">Employee <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select class="form-select form-select-lg employee-select" id="employeeId" name="employeeId" required>
+                                    <option value="">-- Select Employee --</option>
+                                    @{
+                                        var employeeList = ViewBag.Employees as List<CVM_FinalProject.Models.Employee>;
+                                        if (employeeList != null && employeeList.Count > 0)
+                                        {
+                                            foreach (var emp in employeeList)
+                                            {
+                                                <option value="@emp.EmployeeId" data-position="@(emp.Position ?? "N/A")" data-department="@(emp.Department?.DepartmentName ?? "Unassigned")">
+                                                    @(emp.User?.FullName ?? "Unknown") - @(emp.Position ?? "N/A") (@(emp.Department?.DepartmentName ?? "Unassigned"))
+                                                </option>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <option disabled>No employees available. Please create employees first.</option>
+                                        }
+                                    }
+                                </select>
+                                <span class="input-group-text">
+                                    <i class="fas fa-chevron-down text-primary"></i>
+                                </span>
+                            </div>
+                            <small class="form-text text-muted d-block mt-2">
+                                <i class="fas fa-info-circle me-1"></i>Automatically saves when selected
+                            </small>
+                        </div>
+
+                        <!-- Evaluation Period -->
+                        <div class="col-md-6 mb-3">
+                            <label for="evaluationPeriod" class="form-label">Evaluation Period <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg" id="evaluationPeriod" name="evaluationPeriod" 
+                                   placeholder="e.g., Q1 2026" required>
+                            <small class="form-text text-muted">Format: Q1/Q2/Q3/Q4 YYYY</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Tasks Completed -->
+                        <div class="col-md-6 mb-3">
+                            <label for="tasksCompleted" class="form-label">Tasks Completed <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control form-control-lg" id="tasksCompleted" name="tasksCompleted" 
+                                   min="0" placeholder="0" required>
+                            <small class="form-text text-muted">Number of completed tasks</small>
+                        </div>
+
+                        <!-- Tasks Pending -->
+                        <div class="col-md-6 mb-3">
+                            <label for="tasksPending" class="form-label">Tasks Pending <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control form-control-lg" id="tasksPending" name="tasksPending" 
+                                   min="0" placeholder="0" required>
+                            <small class="form-text text-muted">Number of pending tasks</small>
+                        </div>
+                    </div>
+
+                    <!-- Performance Rating with Stars -->
+                    <div class="mb-4">
+                        <label class="form-label d-block">Performance Rating <span class="text-danger">*</span></label>
+                        <div class="star-rating mb-2">
+                            <input type="hidden" id="performanceRating" name="performanceRating" value="3" required>
+                            <div class="stars-container" id="starsContainer">
+                                <button type="button" class="star-button" data-rating="1" title="Poor (1/5)">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                                <button type="button" class="star-button" data-rating="2" title="Below Average (2/5)">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                                <button type="button" class="star-button" data-rating="3" title="Average (3/5)">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                                <button type="button" class="star-button" data-rating="4" title="Good (4/5)">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                                <button type="button" class="star-button" data-rating="5" title="Excellent (5/5)">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted d-block mt-2">
+                                <span id="ratingText">Average (3/5)</span> - Click a star to rate
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks & Comments</label>
+                        <textarea class="form-control" id="remarks" name="remarks" rows="4" 
+                                  placeholder="Enter performance remarks, strengths, areas for improvement..."></textarea>
+                        <small class="form-text text-muted">Optional: Add detailed feedback about the employee's performance</small>
+                    </div>
+
+                    <!-- Info Alert -->
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> This performance record will be saved to the database and displayed in the Performance Records list below.
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="fas fa-check me-2"></i>Record Evaluation
+                    </button>
+                    <small class="position-absolute ms-3 text-muted" style="bottom: 1rem; left: 1rem;">
+                        <i class="fas fa-bolt text-warning me-1"></i>Auto-saves on employee selection
+                    </small>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Performance Records Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="data-table">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Performance Records
+                    @if (Model?.Count > 0)
+                    {
+                        <span class="badge bg-primary">@Model.Count</span>
+                    }
+                </h5>
+                <div class="d-flex gap-2 mt-2 mt-md-0">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search employee, period..." id="searchPerformance" style="width: 250px;">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="performanceTable">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Position</th>
+                            <th>Department</th>
+                            <th>Evaluation Period</th>
+                            <th>Tasks Completed</th>
+                            <th>Tasks Pending</th>
+                            <th>Rating</th>
+                            <th>Recorded Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var record in Model)
+                            {
+                                var ratingClass = record.PerformanceRating switch
+                                {
+                                    5 => "badge bg-success",      // Excellent
+                                    4 => "badge bg-info",         // Good
+                                    3 => "badge bg-warning",      // Average
+                                    2 => "badge bg-orange",       // Below Average
+                                    _ => "badge bg-danger"        // Poor
+                                };
+
+                                var ratingText = record.PerformanceRating switch
+                                {
+                                    5 => "Excellent",
+                                    4 => "Good",
+                                    3 => "Average",
+                                    2 => "Below Average",
+                                    _ => "Poor"
+                                };
+
+                                <tr>
+                                    <td>
+                                        <strong>@record.Employee?.User?.FullName</strong>
+                                    </td>
+                                    <td>@record.Employee?.Position</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">@record.Employee?.Department?.DepartmentName</span>
+                                    </td>
+                                    <td>@record.EvaluationPeriod</td>
+                                    <td>
+                                        <span class="badge bg-success">@record.TasksCompleted</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning">@record.TasksPending</span>
+                                    </td>
+                                    <td>
+                                        <span class="@ratingClass">
+                                            @for (int i = 0; i < record.PerformanceRating; i++)
+                                            {
+                                                <i class="fas fa-star"></i>
+                                            }
+                                            @ratingText (@record.PerformanceRating/5)
+                                        </span>
+                                    </td>
+                                    <td>@record.RecordedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewRecord('@record.PerformanceId', '@record.Employee?.User?.FullName', '@record.PerformanceRating', '@record.Remarks')" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox me-2"></i>No performance records found. Start by recording an evaluation.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (Model?.Count > 0)
+            {
+                <div class="mt-3 text-muted small">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Showing @Model.Count performance record(s)
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Performance Details Modal -->
+<div class="modal fade" id="viewPerformanceModal" tabindex="-1" aria-labelledby="viewPerformanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="viewPerformanceModalLabel">
+                    <i class="fas fa-chart-bar me-2"></i>Performance Record Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="performanceDetails">
+                <p class="text-muted">Loading...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<style>
+    /* Enhanced Employee Dropdown Styling */
+    .employee-select {
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+
+    .employee-select:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+
+    .employee-select:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    .input-group .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
+    }
+
+    .input-group .employee-select:focus + .input-group-text {
+        border-color: #0d6efd;
+        background-color: #e7f1ff;
+    }
+
+        /* Auto-Save Alert Styling */
+        #autoSaveAlert {
+            position: relative;
+            animation: slideDown 0.3s ease;
+        }
+
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.25em;
+    }
+
+    /* Star rating styles */
+    .star-rating {
+        display: inline-block;
+    }
+
+    .stars-container {
+        display: flex;
+        gap: 10px;
+        font-size: 2.5rem;
+    }
+
+    .star-button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #ddd;
+        transition: all 0.2s ease;
+        padding: 0;
+        font-size: 2.5rem;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .star-button:hover,
+    .star-button.active {
+        color: #ffc107;
+        transform: scale(1.1);
+    }
+
+    .star-button:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.5);
+        border-radius: 4px;
+    }
+
+    .star-button i {
+        display: block;
+    }
+
+    /* Rating text styles */
+    .rating-poor { color: #dc3545; }
+    .rating-below { color: #fd7e14; }
+    .rating-average { color: #ffc107; }
+    .rating-good { color: #28a745; }
+    .rating-excellent { color: #0d6efd; }
+
+    .bg-orange {
+        background-color: #fd7e14 !important;
+    }
+
+    /* Form styling enhancements */
+    .modal-body {
+        background-color: #f8f9fa;
+    }
+
+    .form-label {
+        color: #2c3e50;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-control, .form-select {
+        border: 1px solid #dee2e6;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+</style>
+
+    <script>
+        // ===== AUTO-SAVE FUNCTIONALITY =====
+        const employeeSelect = document.getElementById('employeeId');
+        const evaluationPeriodInput = document.getElementById('evaluationPeriod');
+        const tasksCompletedInput = document.getElementById('tasksCompleted');
+        const tasksPendingInput = document.getElementById('tasksPending');
+        const performanceRatingInput = document.getElementById('performanceRating');
+        const performanceForm = document.getElementById('performanceForm');
+        const autoSaveAlert = document.getElementById('autoSaveAlert');
+        const autoSaveMessage = document.getElementById('autoSaveMessage');
+
+        let isSaving = false;
+
+        // Auto-save when employee is selected
+        if (employeeSelect) {
+            employeeSelect.addEventListener('change', function() {
+                if (this.value) {
+                    // Set default values if not already set
+                    if (!evaluationPeriodInput.value) {
+                        const currentDate = new Date();
+                        const quarter = Math.ceil((currentDate.getMonth() + 1) / 3);
+                        evaluationPeriodInput.value = `Q${quarter} ${currentDate.getFullYear()}`;
+                    }
+                    if (!tasksCompletedInput.value) tasksCompletedInput.value = '0';
+                    if (!tasksPendingInput.value) tasksPendingInput.value = '0';
+                    
+                    // Auto-submit form
+                    autoSaveForm('Employee selected - Auto-saving...');
+                }
+            });
+        }
+
+        function autoSaveForm(message = 'Saving performance record...') {
+            if (isSaving) return;
+            
+            // Show loading alert
+            autoSaveMessage.textContent = message;
+            autoSaveAlert.style.display = 'block';
+            isSaving = true;
+
+            // Validate form before submission
+            if (!performanceForm.checkValidity()) {
+                showAutoSaveMessage('error', 'Please fill all required fields');
+                isSaving = false;
+                return;
+            }
+
+            // Submit form
+            setTimeout(() => {
+                performanceForm.submit();
+            }, 500);
+        }
+
+        function showAutoSaveMessage(type, message) {
+            autoSaveAlert.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+            autoSaveMessage.textContent = message;
+            autoSaveAlert.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    autoSaveAlert.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Star Rating Functionality
+            const stars = document.querySelectorAll('.star');
+            const ratingInput = document.getElementById('performanceRating');
+            const ratingText = document.getElementById('ratingText');
+            const ratingDescriptions = {
+                1: 'Poor (1/5)',
+                2: 'Below Average (2/5)',
+                3: 'Average (3/5)',
+                4: 'Good (4/5)',
+                5: 'Excellent (5/5)'
+            };
+
+            let currentRating = 3; // Default
+
+            if (stars.length > 0) {
+                stars.forEach(star => {
+                    star.addEventListener('click', function() {
+                        currentRating = parseInt(this.getAttribute('data-rating'));
+                        ratingInput.value = currentRating;
+                        updateStars(currentRating);
+                        updateRatingText(currentRating);
+                    });
+
+                    star.addEventListener('mouseenter', function() {
+                        const hoverRating = parseInt(this.getAttribute('data-rating'));
+                        updateStars(hoverRating);
+                    });
+                });
+
+                const starsContainer = document.getElementById('starsContainer');
+                if (starsContainer) {
+                    starsContainer.addEventListener('mouseleave', function() {
+                        updateStars(currentRating);
+                    });
+                }
+            }
+
+            function updateStars(rating) {
+                stars.forEach(star => {
+                    const starRating = parseInt(star.getAttribute('data-rating'));
+                    if (starRating <= rating) {
+                        star.classList.add('active');
+                    } else {
+                        star.classList.remove('active');
+                    }
+                });
+            }
+
+            function updateRatingText(rating) {
+                if (ratingText) {
+                    ratingText.textContent = ratingDescriptions[rating] || 'Average (3/5)';
+                }
+            }
+
+            // Set initial state
+            if (stars.length > 0) {
+                updateStars(currentRating);
+                updateRatingText(currentRating);
+            }
+        });
+
+        function searchPerformance() {
+            const searchInput = document.getElementById('searchPerformance').value.toLowerCase();
+            const rows = document.querySelectorAll('#performanceTable tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchInput) ? '' : 'none';
+            });
+        }
+
+        function viewRecord(id, employeeName, rating, remarks) {
+            const ratingDescriptions = {
+                '5': 'Excellent',
+                '4': 'Good',
+                '3': 'Average',
+                '2': 'Below Average',
+                '1': 'Poor'
+            };
+
+            const ratingText = ratingDescriptions[rating] || 'Unknown';
+            const remarksHtml = remarks ? `<p class="mb-0"><strong>Remarks:</strong></p><p>${remarks}</p>` : '<p class="text-muted">No remarks provided</p>';
+
+            const detailsHtml = `
+                <div class="mb-3">
+                    <h6 class="text-muted">Employee Name</h6>
+                    <p class="mb-3"><strong>${employeeName}</strong></p>
+                </div>
+                <div class="mb-3">
+                    <h6 class="text-muted">Performance Rating</h6>
+                    <p class="mb-3">
+                        <span class="badge bg-info" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                            ${rating}/5 - ${ratingText}
+                        </span>
+                    </p>
+                </div>
+                <div class="mb-3">
+                    <h6 class="text-muted">Comments & Remarks</h6>
+                    ${remarksHtml}
+                </div>
+            `;
+
+            document.getElementById('performanceDetails').innerHTML = detailsHtml;
+            new bootstrap.Modal(document.getElementById('viewPerformanceModal')).show();
+        }
+
+        document.getElementById('searchPerformance')?.addEventListener('keyup', searchPerformance);
+    </script>
+}
